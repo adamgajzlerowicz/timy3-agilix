@@ -6,6 +6,7 @@ using System.Drawing;
 using System.Linq;
 using System.Text;
 using System.Windows.Forms;
+using System.Threading;
 
 namespace AlgeTimyUsb.SampleApplication
 {
@@ -21,23 +22,48 @@ namespace AlgeTimyUsb.SampleApplication
 
         private void Form1_Load(object sender, EventArgs e)
         {
-            timyUsb = new Alge.TimyUsb(this);
-            timyUsb.Start();
-            btnStart.Enabled = false;
-            btnStop.Enabled = true;
-
-
-
-            timyUsb.DeviceConnected += new EventHandler<Alge.DeviceChangedEventArgs>(timyUsb_DeviceConnected);
-            timyUsb.DeviceDisconnected += new EventHandler<Alge.DeviceChangedEventArgs>(timyUsb_DeviceDisconnected);
-            timyUsb.LineReceived += new EventHandler<Alge.DataReceivedEventArgs>(timyUsb_LineReceived);
-            timyUsb.BytesReceived += timyUsb_BytesReceived;
-            timyUsb.RawReceived += new EventHandler<Alge.DataReceivedEventArgs>(timyUsb_RawReceived);
-            timyUsb.PnPDeviceAttached += new EventHandler(timyUsb_PnPDeviceAttached);
-            timyUsb.PnPDeviceDetached += new EventHandler(timyUsb_PnPDeviceDetached);
-            timyUsb.HeartbeatReceived += new EventHandler<Alge.HeartbeatReceivedEventArgs>(timyUsb_HeartbeatReceived);
-
-            AddLogLine("Process is " + (IntPtr.Size == 8 ? "x64" : "x86"  ));
+            AddLogLine("Process is " + (IntPtr.Size == 8 ? "x64" : "x86"));
+            
+            try
+            {
+                // Initialize TimyUsb
+                timyUsb = new Alge.TimyUsb(this);
+                
+                // Set up event handlers
+                timyUsb.DeviceConnected += new EventHandler<Alge.DeviceChangedEventArgs>(timyUsb_DeviceConnected);
+                timyUsb.DeviceDisconnected += new EventHandler<Alge.DeviceChangedEventArgs>(timyUsb_DeviceDisconnected);
+                timyUsb.LineReceived += new EventHandler<Alge.DataReceivedEventArgs>(timyUsb_LineReceived);
+                timyUsb.BytesReceived += timyUsb_BytesReceived;
+                timyUsb.RawReceived += new EventHandler<Alge.DataReceivedEventArgs>(timyUsb_RawReceived);
+                timyUsb.PnPDeviceAttached += new EventHandler(timyUsb_PnPDeviceAttached);
+                timyUsb.PnPDeviceDetached += new EventHandler(timyUsb_PnPDeviceDetached);
+                timyUsb.HeartbeatReceived += new EventHandler<Alge.HeartbeatReceivedEventArgs>(timyUsb_HeartbeatReceived);
+                
+                // Start TimyUsb
+                timyUsb.Start();
+                btnStart.Enabled = false;
+                btnStop.Enabled = true;
+                
+                // Check for already connected devices with a small delay
+                this.BeginInvoke(new Action(() => {
+                    int connectedCount = timyUsb.ConnectedDevicesCount;
+                    if (connectedCount > 0)
+                    {
+                        AddLogLine("Found " + connectedCount + " device(s) already connected at startup");
+                        Send("PROG");
+                    }
+                    else
+                    {
+                        AddLogLine("No devices connected at startup");
+                    }
+                }));
+            }
+            catch (Exception ex)
+            {
+                AddLogLine("Error initializing TimyUsb: " + ex.Message);
+                btnStart.Enabled = false;
+                btnStop.Enabled = false;
+            }
         }
 
         void timyUsb_BytesReceived(object sender, Alge.BytesReceivedEventArgs e)

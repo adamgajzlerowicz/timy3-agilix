@@ -7,6 +7,9 @@ namespace AlgeTimyUsb.SampleApplication
 {
     static class Program
     {
+        // Flag to indicate if the assembly was successfully loaded
+        public static bool TimyAssemblyLoaded { get; private set; } = false;
+
         /// <summary>
         /// The main entry point for the application.
         /// </summary>
@@ -18,9 +21,19 @@ namespace AlgeTimyUsb.SampleApplication
 
             // Attach an event handler for missing assemblies
             AppDomain.CurrentDomain.AssemblyResolve += new ResolveEventHandler(CurrentDomain_AssemblyResolve);
+            
+            // Preload the Timy USB assembly to ensure proper device detection at startup
+            try
+            {
+                // This will trigger the assembly resolution mechanism
+                var dummy = typeof(Alge.TimyUsb);
+            }
+            catch
+            {
+                // Assembly resolution will be handled by the AssemblyResolve event
+            }
 
             Application.Run(new Form1());
-
         }
 
         #region x86/x64 compatibility
@@ -45,6 +58,7 @@ namespace AlgeTimyUsb.SampleApplication
                     {
                         // Try to load assembly
                         var a = System.Reflection.Assembly.LoadFile(filename);
+                        TimyAssemblyLoaded = true; // Set flag indicating successful load
                         return a;
                     }
                     catch (Exception ex)
