@@ -1,3 +1,11 @@
+## actual signals:
+On start I have receivied this:
+Device 1 Line: 0003 COM 10:36:55:08 01
+
+and on finish I can see this:
+Device 1 Line: 0003 c1M 00005.22 01
+
+
 12 Interfaces
 12.1 RS232 Interface
 Output format: 1 start bit, 8 data bit, no parity bit, 1 stop bit
@@ -9,7 +17,7 @@ y first sign is blank or info (see below)
 x blank
 NNNN start number, max. 4-digit, prezeros arel not shown
 CCC channels of timing device
-c0 channel 0 start channel
+c0 channel 0 start channelS
 c0M channel 0 triggered by keypad <START>
 c1 channel 1 finish channel
 c1M channel 1 triggered by keypad <STOP>
