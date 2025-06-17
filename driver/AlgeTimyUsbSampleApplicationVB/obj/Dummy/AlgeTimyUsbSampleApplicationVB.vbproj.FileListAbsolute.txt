@@ -1,0 +1,13 @@
+F:\Sources\AlgeTimyUsb\AlgeTimyUsbSampleApplicationVB\bin\Dummy\AlgeTimyUsbSampleApplicationVB.exe.config
+F:\Sources\AlgeTimyUsb\AlgeTimyUsbSampleApplicationVB\bin\Dummy\AlgeTimyUsbSampleApplicationVB.exe
+F:\Sources\AlgeTimyUsb\AlgeTimyUsbSampleApplicationVB\bin\Dummy\AlgeTimyUsbSampleApplicationVB.pdb
+F:\Sources\AlgeTimyUsb\AlgeTimyUsbSampleApplicationVB\bin\Dummy\AlgeTimyUsbSampleApplicationVB.xml
+F:\Sources\AlgeTimyUsb\AlgeTimyUsbSampleApplicationVB\obj\Dummy\AlgeTimyUsbSampleApplicationVB.Form1.resources
+F:\Sources\AlgeTimyUsb\AlgeTimyUsbSampleApplicationVB\obj\Dummy\AlgeTimyUsbSampleApplicationVB.Resources.resources
+F:\Sources\AlgeTimyUsb\AlgeTimyUsbSampleApplicationVB\obj\Dummy\AlgeTimyUsbSampleApplicationVB.vbproj.GenerateResource.cache
+F:\Sources\AlgeTimyUsb\AlgeTimyUsbSampleApplicationVB\obj\Dummy\AlgeTimyUsbSampleApplicationVB.vbproj.CoreCompileInputs.cache
+F:\Sources\AlgeTimyUsb\AlgeTimyUsbSampleApplicationVB\obj\Dummy\AlgeTimyUsbSampleApplicationVB.exe
+F:\Sources\AlgeTimyUsb\AlgeTimyUsbSampleApplicationVB\obj\Dummy\AlgeTimyUsbSampleApplicationVB.xml
+F:\Sources\AlgeTimyUsb\AlgeTimyUsbSampleApplicationVB\obj\Dummy\AlgeTimyUsbSampleApplicationVB.pdb
+F:\Sources\AlgeTimyUsb\AlgeTimyUsbSampleApplicationVB\obj\Dummy\AlgeTimyUsbSampleApplicationVB.vbproj.AssemblyReference.cache
+F:\Sources\AlgeTimyUsb\AlgeTimyUsbSampleApplicationVB\obj\Dummy\AlgeTimyUsbSampleApplicationVB.vbproj.SuggestedBindingRedirects.cache

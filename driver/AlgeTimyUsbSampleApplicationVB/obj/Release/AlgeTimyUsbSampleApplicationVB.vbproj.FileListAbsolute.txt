@@ -1,0 +1,12 @@
+F:\Sources\AlgeTimyUsb\AlgeTimyUsbSampleApplicationVB\bin\Release\AlgeTimyUsbSampleApplicationVB.exe.config
+F:\Sources\AlgeTimyUsb\AlgeTimyUsbSampleApplicationVB\bin\Release\AlgeTimyUsbSampleApplicationVB.exe
+F:\Sources\AlgeTimyUsb\AlgeTimyUsbSampleApplicationVB\bin\Release\AlgeTimyUsbSampleApplicationVB.pdb
+F:\Sources\AlgeTimyUsb\AlgeTimyUsbSampleApplicationVB\bin\Release\AlgeTimyUsbSampleApplicationVB.xml
+F:\Sources\AlgeTimyUsb\AlgeTimyUsbSampleApplicationVB\obj\Release\AlgeTimyUsbSampleApplicationVB.vbprojAssemblyReference.cache
+F:\Sources\AlgeTimyUsb\AlgeTimyUsbSampleApplicationVB\obj\Release\AlgeTimyUsbSampleApplicationVB.Form1.resources
+F:\Sources\AlgeTimyUsb\AlgeTimyUsbSampleApplicationVB\obj\Release\AlgeTimyUsbSampleApplicationVB.Resources.resources
+F:\Sources\AlgeTimyUsb\AlgeTimyUsbSampleApplicationVB\obj\Release\AlgeTimyUsbSampleApplicationVB.vbproj.GenerateResource.cache
+F:\Sources\AlgeTimyUsb\AlgeTimyUsbSampleApplicationVB\obj\Release\AlgeTimyUsbSampleApplicationVB.vbproj.CoreCompileInputs.cache
+F:\Sources\AlgeTimyUsb\AlgeTimyUsbSampleApplicationVB\obj\Release\AlgeTimyUsbSampleApplicationVB.exe
+F:\Sources\AlgeTimyUsb\AlgeTimyUsbSampleApplicationVB\obj\Release\AlgeTimyUsbSampleApplicationVB.xml
+F:\Sources\AlgeTimyUsb\AlgeTimyUsbSampleApplicationVB\obj\Release\AlgeTimyUsbSampleApplicationVB.pdb

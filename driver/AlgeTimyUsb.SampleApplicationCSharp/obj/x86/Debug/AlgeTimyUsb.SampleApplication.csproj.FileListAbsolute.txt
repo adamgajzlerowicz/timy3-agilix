@@ -1,0 +1,11 @@
+F:\Sources\AlgeTimyUsb\AlgeTimyUsb.SampleApplication\bin\Debug\AlgeTimyUsb.SampleApplication.exe.config
+F:\Sources\AlgeTimyUsb\AlgeTimyUsb.SampleApplication\bin\Debug\AlgeTimyUsb.SampleApplication.exe
+F:\Sources\AlgeTimyUsb\AlgeTimyUsb.SampleApplication\bin\Debug\AlgeTimyUsb.SampleApplication.pdb
+F:\Sources\AlgeTimyUsb\AlgeTimyUsb.SampleApplication\obj\x86\Debug\AlgeTimyUsb.SampleApplication.Form1.resources
+F:\Sources\AlgeTimyUsb\AlgeTimyUsb.SampleApplication\obj\x86\Debug\AlgeTimyUsb.SampleApplication.Properties.Resources.resources
+F:\Sources\AlgeTimyUsb\AlgeTimyUsb.SampleApplication\obj\x86\Debug\AlgeTimyUsb.SampleApplication.csproj.GenerateResource.cache
+F:\Sources\AlgeTimyUsb\AlgeTimyUsb.SampleApplication\obj\x86\Debug\AlgeTimyUsb.SampleApplication.csproj.CoreCompileInputs.cache
+F:\Sources\AlgeTimyUsb\AlgeTimyUsb.SampleApplication\obj\x86\Debug\AlgeTimyUsb.SampleApplication.exe
+F:\Sources\AlgeTimyUsb\AlgeTimyUsb.SampleApplication\obj\x86\Debug\AlgeTimyUsb.SampleApplication.pdb
+F:\Sources\AlgeTimyUsb\AlgeTimyUsb.SampleApplication\obj\x86\Debug\AlgeTimyUsb.SampleApplication.csproj.AssemblyReference.cache
+F:\Sources\AlgeTimyUsb\AlgeTimyUsb.SampleApplication\obj\x86\Debug\AlgeTimyUsb.SampleApplication.csproj.SuggestedBindingRedirects.cache

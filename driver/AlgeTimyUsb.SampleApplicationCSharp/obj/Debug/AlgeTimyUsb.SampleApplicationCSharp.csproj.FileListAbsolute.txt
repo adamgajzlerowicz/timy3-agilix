@@ -1,0 +1,10 @@
+F:\Sources\AlgeTimyUsb\AlgeTimyUsb.SampleApplicationCSharp\bin\Debug\AlgeTimyUsb.SampleApplication.exe.config
+F:\Sources\AlgeTimyUsb\AlgeTimyUsb.SampleApplicationCSharp\bin\Debug\AlgeTimyUsb.SampleApplication.exe
+F:\Sources\AlgeTimyUsb\AlgeTimyUsb.SampleApplicationCSharp\bin\Debug\AlgeTimyUsb.SampleApplication.pdb
+F:\Sources\AlgeTimyUsb\AlgeTimyUsb.SampleApplicationCSharp\obj\Debug\AlgeTimyUsb.SampleApplicationCSharp.csproj.AssemblyReference.cache
+F:\Sources\AlgeTimyUsb\AlgeTimyUsb.SampleApplicationCSharp\obj\Debug\AlgeTimyUsb.SampleApplication.Form1.resources
+F:\Sources\AlgeTimyUsb\AlgeTimyUsb.SampleApplicationCSharp\obj\Debug\AlgeTimyUsb.SampleApplication.Properties.Resources.resources
+F:\Sources\AlgeTimyUsb\AlgeTimyUsb.SampleApplicationCSharp\obj\Debug\AlgeTimyUsb.SampleApplicationCSharp.csproj.GenerateResource.cache
+F:\Sources\AlgeTimyUsb\AlgeTimyUsb.SampleApplicationCSharp\obj\Debug\AlgeTimyUsb.SampleApplicationCSharp.csproj.CoreCompileInputs.cache
+F:\Sources\AlgeTimyUsb\AlgeTimyUsb.SampleApplicationCSharp\obj\Debug\AlgeTimyUsb.SampleApplication.exe
+F:\Sources\AlgeTimyUsb\AlgeTimyUsb.SampleApplicationCSharp\obj\Debug\AlgeTimyUsb.SampleApplication.pdb
