@@ -97,9 +97,36 @@
             border-left: 4px solid #F44336;
             background-color: #ffebee;
         }
+        .message.start {
+            border-left: 4px solid #2196F3;
+            background-color: #e3f2fd;
+        }
+        .message.finish {
+            border-left: 4px solid #FF9800;
+            background-color: #fff3e0;
+        }
         .timestamp {
             color: #999;
             font-size: 0.8em;
+        }
+        .timer-display {
+            margin: 20px 0;
+            padding: 20px;
+            background-color: #000;
+            border-radius: 8px;
+            text-align: center;
+        }
+        .device-time {
+            font-family: 'Courier New', monospace;
+            font-size: 48px;
+            font-weight: bold;
+            color: #4CAF50;
+            margin: 0;
+        }
+        .timer-label {
+            color: white;
+            margin-top: 10px;
+            font-size: 18px;
         }
     </style>
 </head>
@@ -117,14 +144,9 @@
             <button id="disconnectBtn" disabled>Disconnect</button>
         </div>
         
-        <div class="controls">
-            <button id="getDevicesBtn" disabled>Get Devices</button>
-            <button id="getStatusBtn" disabled>Get Status</button>
-        </div>
-        
-        <div class="controls">
-            <input type="text" id="commandInput" placeholder="Command (e.g. send:PROG)" disabled>
-            <button id="sendCommandBtn" disabled>Send</button>
+        <div class="timer-display">
+            <p class="device-time" id="deviceTime">--:--:--</p>
+            <p class="timer-label" id="timerStatus">Ready</p>
         </div>
         
         <div class="messages" id="messageContainer">
@@ -142,16 +164,15 @@
         const serverUrlInput = document.getElementById('serverUrl');
         const connectBtn = document.getElementById('connectBtn');
         const disconnectBtn = document.getElementById('disconnectBtn');
-        const getDevicesBtn = document.getElementById('getDevicesBtn');
-        const getStatusBtn = document.getElementById('getStatusBtn');
-        const commandInput = document.getElementById('commandInput');
-        const sendCommandBtn = document.getElementById('sendCommandBtn');
         const messageContainer = document.getElementById('messageContainer');
         const connectionStatus = document.getElementById('connectionStatus');
         const currentTimeSpan = document.getElementById('currentTime');
+        const deviceTime = document.getElementById('deviceTime');
+        const timerStatus = document.getElementById('timerStatus');
         
         // WebSocket connection
         let socket = null;
+        let startTimeReceived = null;
         
         // Set current time
         currentTimeSpan.textContent = new Date().toLocaleString();
@@ -173,10 +194,6 @@
                     
                     connectBtn.disabled = true;
                     disconnectBtn.disabled = false;
-                    getDevicesBtn.disabled = false;
-                    getStatusBtn.disabled = false;
-                    commandInput.disabled = false;
-                    sendCommandBtn.disabled = false;
                     
                     addMessage(`Connected to ${url}`, 'system');
                 };
@@ -187,13 +204,10 @@
                     
                     connectBtn.disabled = false;
                     disconnectBtn.disabled = true;
-                    getDevicesBtn.disabled = true;
-                    getStatusBtn.disabled = true;
-                    commandInput.disabled = true;
-                    sendCommandBtn.disabled = true;
                     
                     addMessage(`Connection closed. Code: ${event.code}, Reason: ${event.reason}`, 'system');
                     socket = null;
+                    resetDisplay();
                 };
                 
                 socket.onerror = (error) => {
@@ -204,7 +218,7 @@
                 socket.onmessage = (event) => {
                     try {
                         const data = JSON.parse(event.data);
-                        handleMessage(data);
+                        handleTimingEvent(data);
                     } catch (e) {
                         addMessage(`Received: ${event.data}`, 'system');
                     }
@@ -221,118 +235,67 @@
             }
         });
         
-        // Get devices list
-        getDevicesBtn.addEventListener('click', () => {
-            if (socket && socket.readyState === WebSocket.OPEN) {
-                socket.send('getDevices');
-                addMessage('Requested device list', 'system');
-            } else {
-                addMessage('Not connected to server', 'error');
+        // Handle timing events from the server
+        function handleTimingEvent(data) {
+            if (data.event === 'start') {
+                // Handle start event
+                startTimeReceived = data.time;
+                deviceTime.textContent = formatDeviceTime(data.time);
+                deviceTime.style.color = '#4CAF50'; // Green
+                timerStatus.textContent = 'Started';
+                addMessage(`Race started at ${data.time}`, 'start');
+            } else if (data.event === 'finish') {
+                // Handle finish event
+                deviceTime.textContent = formatDeviceTime(data.time);
+                deviceTime.style.color = '#FF9800'; // Orange
+                timerStatus.textContent = 'Finished';
+                addMessage(`Race finished with time: ${data.time}`, 'finish');
             }
-        });
-        
-        // Get status
-        getStatusBtn.addEventListener('click', () => {
-            if (socket && socket.readyState === WebSocket.OPEN) {
-                socket.send('getStatus');
-                addMessage('Requested status', 'system');
-            } else {
-                addMessage('Not connected to server', 'error');
-            }
-        });
-        
-        // Send command
-        sendCommandBtn.addEventListener('click', () => {
-            const command = commandInput.value.trim();
-            if (!command) {
-                addMessage('Please enter a command', 'error');
-                return;
-            }
-            
-            if (socket && socket.readyState === WebSocket.OPEN) {
-                socket.send(command);
-                addMessage(`Sent command: ${command}`, 'system');
-                commandInput.value = '';
-            } else {
-                addMessage('Not connected to server', 'error');
-            }
-        });
-        
-        // Handle command input Enter key
-        commandInput.addEventListener('keyup', (event) => {
-            if (event.key === 'Enter') {
-                sendCommandBtn.click();
-            }
-        });
-        
-        // Handle received messages
-        function handleMessage(data) {
-            let messageText = '';
-            let messageType = 'system';
-            
-            switch (data.type) {
-                case 'deviceList':
-                    messageText = `Device List: ${data.count} device(s)`;
-                    if (data.devices && data.devices.length > 0) {
-                        messageText += '<ul>';
-                        data.devices.forEach(device => {
-                            messageText += `<li>Device ID: ${device}</li>`;
-                        });
-                        messageText += '</ul>';
-                    } else {
-                        messageText += '<br>No devices connected';
-                    }
-                    messageType = 'device';
-                    break;
-                    
-                case 'status':
-                    messageText = `Status: Running: ${data.running}, Devices: ${data.deviceCount}, Messages: ${data.messageCount}`;
-                    messageType = 'system';
-                    break;
-                    
-                case 'deviceConnected':
-                    messageText = `Device Connected: ${data.deviceId}`;
-                    messageType = 'device';
-                    break;
-                    
-                case 'deviceDisconnected':
-                    messageText = `Device Disconnected: ${data.deviceId}`;
-                    messageType = 'device';
-                    break;
-                    
-                case 'line':
-                    messageText = `Line from ${data.deviceId}: ${data.message}`;
-                    messageType = 'line';
-                    break;
-                    
-                case 'raw':
-                    messageText = `Raw from ${data.deviceId}: ${data.message}`;
-                    messageType = 'raw';
-                    break;
-                    
-                default:
-                    messageText = `Received: ${JSON.stringify(data)}`;
-                    break;
-            }
-            
-            addMessage(messageText, messageType, data.timestamp);
         }
         
-        // Add message to container
-        function addMessage(text, type, timestamp) {
-            const messageDiv = document.createElement('div');
-            messageDiv.className = `message ${type}`;
-            messageDiv.innerHTML = text;
+        // Format the device time for display
+        function formatDeviceTime(timeStr) {
+            // Check if it's already in a good format
+            if (timeStr.includes(':')) {
+                return timeStr;
+            }
             
-            const timestampDiv = document.createElement('div');
-            timestampDiv.className = 'timestamp';
-            timestampDiv.textContent = timestamp ? timestamp : new Date().toLocaleString();
+            // If it's just seconds (like "00005.22"), format it better
+            if (timeStr.includes('.')) {
+                const seconds = parseFloat(timeStr);
+                const mins = Math.floor(seconds / 60);
+                const secs = Math.floor(seconds % 60);
+                const ms = Math.round((seconds - Math.floor(seconds)) * 100);
+                
+                return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}.${ms.toString().padStart(2, '0')}`;
+            }
             
-            messageDiv.appendChild(timestampDiv);
-            messageContainer.appendChild(messageDiv);
+            return timeStr;
+        }
+        
+        // Reset display
+        function resetDisplay() {
+            deviceTime.textContent = '--:--:--';
+            deviceTime.style.color = '#4CAF50';
+            timerStatus.textContent = 'Ready';
+            startTimeReceived = null;
+        }
+        
+        // Add a message to the message container
+        function addMessage(message, type = 'system') {
+            const messageElement = document.createElement('div');
+            messageElement.className = `message ${type}`;
             
-            // Auto-scroll to bottom
-            messageContainer.scrollTop = messageContainer.scrollHeight;
+            const timestamp = new Date().toLocaleTimeString();
+            
+            messageElement.innerHTML = `
+                ${message}
+                <div class="timestamp">
+                    [${type}] - ${timestamp}
+                </div>
+            `;
+            
+            messageContainer.prepend(messageElement);
         }
     </script>
 </body>
