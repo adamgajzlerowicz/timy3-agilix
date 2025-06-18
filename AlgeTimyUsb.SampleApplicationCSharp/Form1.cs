@@ -27,10 +27,14 @@ namespace AlgeTimyUsb.SampleApplication
         public Form1()
         {
             InitializeComponent();
+            
+            // Register the click event handler for the listbox
+            listBox1.Click += new EventHandler(listBox1_Click);
         }
 
         private void Form1_Load(object sender, EventArgs e)
         {
+            AddLogLine("Form loading...");
             AddLogLine("Process is " + (IntPtr.Size == 8 ? "x64" : "x86"));
             
             try
@@ -69,12 +73,13 @@ namespace AlgeTimyUsb.SampleApplication
                         AddLogLine("No devices connected at startup");
                     }
                 }));
+                
+                AddLogLine("Form loaded successfully");
             }
             catch (Exception ex)
             {
-                AddLogLine("Error initializing TimyUsb: " + ex.Message);
-                btnStart.Enabled = false;
-                btnStop.Enabled = false;
+                AddLogLine("Error in Form_Load: " + ex.Message);
+                AddLogLine("Stack trace: " + ex.StackTrace);
             }
         }
 
@@ -312,6 +317,10 @@ namespace AlgeTimyUsb.SampleApplication
 
         void timyUsb_LineReceived(object sender, Alge.DataReceivedEventArgs e)
         {
+            // Log the raw signal with a special prefix to make it easier to identify
+            AddLogLine("RAW SIGNAL: " + e.Data);
+            
+            // Also log the standard format
             AddLogLine("Device " + e.Device.Id + " Line: " + e.Data);
 
             if (e.Data.StartsWith("PROG: "))
@@ -329,112 +338,100 @@ namespace AlgeTimyUsb.SampleApplication
         {
             try
             {
-                // Based on the README.md and the actual signals received
-                // Start signal format: "Device 1 Line: 0007 C0M 10:54:11:31 01"
-                // Finish signal format: "Device 1 Line: 0003 c1M 00005.22 01"
+                AddLogLine($"PARSING: {data}");
                 
-                string[] parts = data.Split(new char[] { ' ' }, StringSplitOptions.RemoveEmptyEntries);
-                
-                // Debug: Log all parts to help troubleshoot
-                this.BeginInvoke(new Action(() => {
-                    AddLogLine($"Signal parts: {string.Join(", ", parts)}");
-                }));
-                
-                if (parts.Length >= 4)
+                if (string.IsNullOrEmpty(data))
                 {
-                    // Extract the channel code (e.g., "C0M", "c1M")
-                    string channelCode = null;
-                    int channelCodeIndex = -1;
+                    AddLogLine("EMPTY DATA - SKIPPING");
+                    return;
+                }
+                
+                // Simple string-based detection without arrays
+                string cleanData = data.Replace(",", " ").Trim();
+                AddLogLine($"CLEAN DATA: {cleanData}");
+                
+                // Check for start signal (contains "c0")
+                if (cleanData.ToLower().Contains(" c0 "))
+                {
+                    AddLogLine("FOUND C0 - START SIGNAL");
                     
+                    // Extract time value after "c0"
+                    string[] parts = cleanData.Split(new char[] { ' ' }, StringSplitOptions.RemoveEmptyEntries);
+                    string timeValue = null;
+                    
+                    // Find c0 and get the next part
                     for (int i = 0; i < parts.Length; i++)
                     {
-                        string part = parts[i];
-                        // Look for typical channel codes
-                        if (part.Length >= 3 && 
-                            (part.StartsWith("C", StringComparison.OrdinalIgnoreCase) || 
-                             part.StartsWith("c", StringComparison.OrdinalIgnoreCase)) && 
-                            part.EndsWith("M", StringComparison.OrdinalIgnoreCase))
+                        if (parts[i].ToLower() == "c0" && i + 1 < parts.Length)
                         {
-                            channelCode = part;
-                            channelCodeIndex = i;
+                            timeValue = parts[i + 1];
                             break;
                         }
                     }
                     
-                    this.BeginInvoke(new Action(() => {
-                        AddLogLine($"Channel code detected: {channelCode ?? "none"} at position {channelCodeIndex}");
-                    }));
-                    
-                    // Check for start signal (C0M/c0M)
-                    bool isStartSignal = channelCode != null && 
-                                        (channelCode.Equals("C0M", StringComparison.OrdinalIgnoreCase) || 
-                                         channelCode.Equals("COM", StringComparison.OrdinalIgnoreCase));
-                    
-                    // Check for finish signal (C1M/c1M)
-                    bool isFinishSignal = channelCode != null && 
-                                         channelCode.Equals("C1M", StringComparison.OrdinalIgnoreCase);
-                    
-                    this.BeginInvoke(new Action(() => {
-                        AddLogLine($"Signal analysis: isStart={isStartSignal}, isFinish={isFinishSignal}");
-                    }));
-                    
-                    if (isStartSignal && channelCodeIndex >= 0 && channelCodeIndex + 1 < parts.Length)
+                    if (!string.IsNullOrEmpty(timeValue))
                     {
-                        // Get the time value from the position after the channel code
-                        string timeStr = parts[channelCodeIndex + 1];
+                        AddLogLine($"START TIME: {timeValue}");
                         
-                        if (!string.IsNullOrEmpty(timeStr))
+                        lastStartTimeString = timeValue;
+                        startTime = DateTime.Now;
+                        
+                        // Send to WebSocket
+                        string startMessage = $"{{\"event\":\"start\",\"time\":\"{timeValue}\"}}";
+                        Task.Run(() => BroadcastToWebSocketClientsAsync(startMessage));
+                        
+                        AddLogLine("START SIGNAL SENT TO WEBSOCKET");
+                    }
+                    else
+                    {
+                        AddLogLine("NO TIME VALUE FOUND FOR START");
+                    }
+                }
+                // Check for finish signal (contains "c1")
+                else if (cleanData.ToLower().Contains(" c1 "))
+                {
+                    AddLogLine("FOUND C1 - FINISH SIGNAL");
+                    
+                    // Extract time value after "c1"
+                    string[] parts = cleanData.Split(new char[] { ' ' }, StringSplitOptions.RemoveEmptyEntries);
+                    string timeValue = null;
+                    
+                    // Find c1 and get the next part
+                    for (int i = 0; i < parts.Length; i++)
+                    {
+                        if (parts[i].ToLower() == "c1" && i + 1 < parts.Length)
                         {
-                            lastStartTimeString = timeStr;
-                            startTime = DateTime.Now; // We'll use this for calculating elapsed time
-                            
-                            // Send start signal to WebSocket clients
-                            string startMessage = $"{{\"event\":\"start\",\"time\":\"{timeStr}\"}}";
-                            BroadcastToWebSocketClientsAsync(startMessage).ConfigureAwait(false);
-                            
-                            this.BeginInvoke(new Action(() => {
-                                AddLogLine($"Start signal detected: {timeStr}");
-                            }));
-                        }
-                        else
-                        {
-                            this.BeginInvoke(new Action(() => {
-                                AddLogLine("Start signal detected but could not find time value");
-                            }));
+                            timeValue = parts[i + 1];
+                            break;
                         }
                     }
-                    else if (isFinishSignal && channelCodeIndex >= 0 && channelCodeIndex + 1 < parts.Length)
+                    
+                    if (!string.IsNullOrEmpty(timeValue))
                     {
-                        // Get the time value from the position after the channel code
-                        string timeStr = parts[channelCodeIndex + 1];
+                        AddLogLine($"FINISH TIME: {timeValue}");
                         
-                        if (!string.IsNullOrEmpty(timeStr))
-                        {
-                            // Send finish signal to WebSocket clients with time
-                            string finishMessage = $"{{\"event\":\"finish\",\"time\":\"{timeStr}\"}}";
-                            BroadcastToWebSocketClientsAsync(finishMessage).ConfigureAwait(false);
-                            
-                            this.BeginInvoke(new Action(() => {
-                                AddLogLine($"Finish signal detected: {timeStr}");
-                            }));
-                            
-                            // Reset start time
-                            startTime = null;
-                        }
-                        else
-                        {
-                            this.BeginInvoke(new Action(() => {
-                                AddLogLine("Finish signal detected but could not find time value");
-                            }));
-                        }
+                        // Send to WebSocket
+                        string finishMessage = $"{{\"event\":\"finish\",\"time\":\"{timeValue}\"}}";
+                        Task.Run(() => BroadcastToWebSocketClientsAsync(finishMessage));
+                        
+                        AddLogLine("FINISH SIGNAL SENT TO WEBSOCKET");
+                        
+                        // Reset start time
+                        startTime = null;
                     }
+                    else
+                    {
+                        AddLogLine("NO TIME VALUE FOUND FOR FINISH");
+                    }
+                }
+                else
+                {
+                    AddLogLine("NO C0 OR C1 FOUND - IGNORING SIGNAL");
                 }
             }
             catch (Exception ex)
             {
-                this.BeginInvoke(new Action(() => {
-                    AddLogLine($"Error processing timing data: {ex.Message}");
-                }));
+                AddLogLine($"ERROR IN PROCESS TIMING: {ex.Message}");
             }
         }
 
@@ -558,6 +555,18 @@ namespace AlgeTimyUsb.SampleApplication
             var str = listBox1.SelectedItem;
             if (str != null)
                 Clipboard.SetText(str.ToString());
+        }
+        
+        // Add a single-click handler to copy to clipboard
+        private void listBox1_Click(object sender, EventArgs e)
+        {
+            var str = listBox1.SelectedItem;
+            if (str != null)
+            {
+                Clipboard.SetText(str.ToString());
+                // Briefly highlight the item to indicate it was copied
+                AddLogLine("Copied to clipboard: " + str.ToString());
+            }
         }
 
    

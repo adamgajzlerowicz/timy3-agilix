@@ -202,9 +202,9 @@
     </PostBuildEvent>
   </PropertyGroup>
   <PropertyGroup>
-    <PreBuildEvent>copy "$(SolutionDir)\Dependencies\AlgeTimyUsb.x86.dll" "$(TargetDir)\AlgeTimyUsb.x86.dll"
-copy "$(SolutionDir)\Dependencies\AlgeTimyUsb.x64.dll" "$(TargetDir)\AlgeTimyUsb.x64.dll"
-copy "$(SolutionDir)\Dependencies\AlgeTimyUsb.Dummy.dll" "$(TargetDir)\AlgeTimyUsb.Dummy.dll"</PreBuildEvent>
+    <PreBuildEvent>copy "$(ProjectDir)..\Dependencies\AlgeTimyUsb.x86.dll" "$(TargetDir)AlgeTimyUsb.x86.dll"
+copy "$(ProjectDir)..\Dependencies\AlgeTimyUsb.x64.dll" "$(TargetDir)AlgeTimyUsb.x64.dll"
+copy "$(ProjectDir)..\Dependencies\AlgeTimyUsb.Dummy.dll" "$(TargetDir)AlgeTimyUsb.Dummy.dll"</PreBuildEvent>
   </PropertyGroup>
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 
        Other similar extension points exist, see Microsoft.Common.targets.

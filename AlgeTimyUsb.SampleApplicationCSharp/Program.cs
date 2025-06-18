@@ -16,24 +16,36 @@ namespace AlgeTimyUsb.SampleApplication
         [STAThread]
         static void Main()
         {
-            Application.EnableVisualStyles();
-            Application.SetCompatibleTextRenderingDefault(false);
-
-            // Attach an event handler for missing assemblies
-            AppDomain.CurrentDomain.AssemblyResolve += new ResolveEventHandler(CurrentDomain_AssemblyResolve);
-            
-            // Preload the Timy USB assembly to ensure proper device detection at startup
             try
             {
-                // This will trigger the assembly resolution mechanism
-                var dummy = typeof(Alge.TimyUsb);
-            }
-            catch
-            {
-                // Assembly resolution will be handled by the AssemblyResolve event
-            }
+                Application.EnableVisualStyles();
+                Application.SetCompatibleTextRenderingDefault(false);
 
-            Application.Run(new Form1());
+                // Attach an event handler for missing assemblies
+                AppDomain.CurrentDomain.AssemblyResolve += new ResolveEventHandler(CurrentDomain_AssemblyResolve);
+                
+                // Preload the Timy USB assembly to ensure proper device detection at startup
+                try
+                {
+                    // This will trigger the assembly resolution mechanism
+                    var dummy = typeof(Alge.TimyUsb);
+                }
+                catch (Exception ex)
+                {
+                    System.Windows.Forms.MessageBox.Show("Error loading Timy assembly: " + ex.Message, "Startup Error");
+                    // Assembly resolution will be handled by the AssemblyResolve event
+                }
+
+                Application.Run(new Form1());
+            }
+            catch (Exception ex)
+            {
+                System.Windows.Forms.MessageBox.Show(
+                    "Application startup failed: " + ex.Message + "\n\nStack trace:\n" + ex.StackTrace,
+                    "Fatal Error",
+                    System.Windows.Forms.MessageBoxButtons.OK,
+                    System.Windows.Forms.MessageBoxIcon.Error);
+            }
         }
 
         #region x86/x64 compatibility
