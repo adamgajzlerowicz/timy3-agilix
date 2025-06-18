@@ -91,12 +91,12 @@ namespace AlgeTimyUsb.SampleApplication
                 httpListener = new HttpListener();
                 
                 // Only listen on localhost to reduce startup time and security issues
-                httpListener.Prefixes.Add("http://localhost:8080/");
+                httpListener.Prefixes.Add("http://localhost:8087/");
                 
                 httpListener.Start();
                 
                 this.BeginInvoke(new Action(() => {
-                    AddLogLine("WebSocket server started at ws://localhost:8080/timy3");
+                    AddLogLine("WebSocket server started at ws://localhost:8087/timy3");
                 }));
                 
                 AcceptWebSocketClientsAsync(webSocketCancellation.Token).ConfigureAwait(false);
@@ -128,7 +128,7 @@ namespace AlgeTimyUsb.SampleApplication
                         {
                             response.StatusCode = 200;
                             response.ContentType = "text/html";
-                            string responseString = "<html><body><h1>Timy3 WebSocket Server</h1><p>This is a WebSocket server endpoint. Connect to ws://localhost:8080/timy3</p></body></html>";
+                            string responseString = "<html><body><h1>Timy3 WebSocket Server</h1><p>This is a WebSocket server endpoint. Connect to ws://localhost:8087/timy3</p></body></html>";
                             byte[] buffer = Encoding.UTF8.GetBytes(responseString);
                             response.ContentLength64 = buffer.Length;
                             await response.OutputStream.WriteAsync(buffer, 0, buffer.Length);

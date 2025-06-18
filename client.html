@@ -139,7 +139,7 @@
         </div>
         
         <div class="controls">
-            <input type="text" id="serverUrl" value="ws://localhost:8080/timy3" placeholder="WebSocket URL">
+            <input type="text" id="serverUrl" value="ws://localhost:8087/timy3" placeholder="WebSocket URL">
             <button id="connectBtn">Connect</button>
             <button id="disconnectBtn" disabled>Disconnect</button>
         </div>
@@ -173,6 +173,7 @@
         // WebSocket connection
         let socket = null;
         let startTimeReceived = null;
+        let timerInterval;
         
         // Set current time
         currentTimeSpan.textContent = new Date().toLocaleString();
