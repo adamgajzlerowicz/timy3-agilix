@@ -35,6 +35,9 @@ namespace AlgeTimyUsb.SampleApplication
             
             try
             {
+                // Start WebSocket server in a separate task to avoid blocking UI
+                Task.Run(() => StartWebSocketServer());
+                
                 // Initialize TimyUsb
                 timyUsb = new Alge.TimyUsb(this);
                 
@@ -66,9 +69,6 @@ namespace AlgeTimyUsb.SampleApplication
                         AddLogLine("No devices connected at startup");
                     }
                 }));
-
-                // Start WebSocket server
-                StartWebSocketServer();
             }
             catch (Exception ex)
             {
@@ -84,16 +84,23 @@ namespace AlgeTimyUsb.SampleApplication
             {
                 webSocketCancellation = new CancellationTokenSource();
                 httpListener = new HttpListener();
+                
+                // Only listen on localhost to reduce startup time and security issues
                 httpListener.Prefixes.Add("http://localhost:8080/");
+                
                 httpListener.Start();
                 
-                AddLogLine("WebSocket server started at ws://localhost:8080/timy3");
+                this.BeginInvoke(new Action(() => {
+                    AddLogLine("WebSocket server started at ws://localhost:8080/timy3");
+                }));
                 
-                Task.Run(() => AcceptWebSocketClientsAsync(webSocketCancellation.Token));
+                AcceptWebSocketClientsAsync(webSocketCancellation.Token).ConfigureAwait(false);
             }
             catch (Exception ex)
             {
-                AddLogLine("Error starting WebSocket server: " + ex.Message);
+                this.BeginInvoke(new Action(() => {
+                    AddLogLine("Error starting WebSocket server: " + ex.Message);
+                }));
             }
         }
 
@@ -107,23 +114,20 @@ namespace AlgeTimyUsb.SampleApplication
                     
                     if (context.Request.IsWebSocketRequest && context.Request.Url.AbsolutePath == "/timy3")
                     {
-                        HttpListenerWebSocketContext webSocketContext = await context.AcceptWebSocketAsync(null);
-                        WebSocket webSocket = webSocketContext.WebSocket;
-                        
-                        AddLogLine("WebSocket client connected");
-                        
-                        lock (clientsLock)
-                        {
-                            connectedClients.Add(webSocket);
-                        }
-                        
-                        // Handle client in separate task
-                        _ = HandleWebSocketClientAsync(webSocket, cancellationToken);
+                        ProcessWebSocketRequest(context, cancellationToken);
                     }
                     else
                     {
-                        context.Response.StatusCode = 400;
-                        context.Response.Close();
+                        // Return a simple HTML page for non-WebSocket requests
+                        using (var response = context.Response)
+                        {
+                            response.StatusCode = 200;
+                            response.ContentType = "text/html";
+                            string responseString = "<html><body><h1>Timy3 WebSocket Server</h1><p>This is a WebSocket server endpoint. Connect to ws://localhost:8080/timy3</p></body></html>";
+                            byte[] buffer = Encoding.UTF8.GetBytes(responseString);
+                            response.ContentLength64 = buffer.Length;
+                            await response.OutputStream.WriteAsync(buffer, 0, buffer.Length);
+                        }
                     }
                 }
             }
@@ -131,8 +135,37 @@ namespace AlgeTimyUsb.SampleApplication
             {
                 if (!cancellationToken.IsCancellationRequested)
                 {
-                    AddLogLine("WebSocket server error: " + ex.Message);
+                    this.BeginInvoke(new Action(() => {
+                        AddLogLine("WebSocket server error: " + ex.Message);
+                    }));
                 }
+            }
+        }
+        
+        private async void ProcessWebSocketRequest(HttpListenerContext context, CancellationToken cancellationToken)
+        {
+            try
+            {
+                HttpListenerWebSocketContext webSocketContext = await context.AcceptWebSocketAsync(null);
+                WebSocket webSocket = webSocketContext.WebSocket;
+                
+                this.BeginInvoke(new Action(() => {
+                    AddLogLine("WebSocket client connected");
+                }));
+                
+                lock (clientsLock)
+                {
+                    connectedClients.Add(webSocket);
+                }
+                
+                // Handle client in separate task
+                _ = HandleWebSocketClientAsync(webSocket, cancellationToken);
+            }
+            catch (Exception ex)
+            {
+                this.BeginInvoke(new Action(() => {
+                    AddLogLine("Error accepting WebSocket connection: " + ex.Message);
+                }));
             }
         }
 
@@ -162,7 +195,9 @@ namespace AlgeTimyUsb.SampleApplication
             }
             catch (Exception ex)
             {
-                AddLogLine("WebSocket client error: " + ex.Message);
+                this.BeginInvoke(new Action(() => {
+                    AddLogLine("WebSocket client error: " + ex.Message);
+                }));
             }
             finally
             {
@@ -183,13 +218,16 @@ namespace AlgeTimyUsb.SampleApplication
                     catch { }
                 }
                 
-                AddLogLine("WebSocket client disconnected");
+                this.BeginInvoke(new Action(() => {
+                    AddLogLine("WebSocket client disconnected");
+                }));
             }
         }
 
         private async Task BroadcastToWebSocketClientsAsync(string message)
         {
             List<WebSocket> clientsCopy;
+            List<WebSocket> clientsToRemove = new List<WebSocket>();
             
             lock (clientsLock)
             {
@@ -214,11 +252,33 @@ namespace AlgeTimyUsb.SampleApplication
                             true,
                             CancellationToken.None);
                     }
-                    catch (Exception ex)
+                    catch (Exception)
                     {
-                        AddLogLine("Error sending to WebSocket client: " + ex.Message);
+                        // Mark client for removal if sending fails
+                        clientsToRemove.Add(client);
                     }
                 }
+                else
+                {
+                    // Mark client for removal if not open
+                    clientsToRemove.Add(client);
+                }
+            }
+            
+            // Remove any failed clients
+            if (clientsToRemove.Count > 0)
+            {
+                lock (clientsLock)
+                {
+                    foreach (var client in clientsToRemove)
+                    {
+                        connectedClients.Remove(client);
+                    }
+                }
+                
+                this.BeginInvoke(new Action(() => {
+                    AddLogLine($"Removed {clientsToRemove.Count} disconnected WebSocket clients");
+                }));
             }
         }
 
@@ -260,95 +320,121 @@ namespace AlgeTimyUsb.SampleApplication
             }
             else
             {
-                ProcessTimingData(e.Data);
+                // Process timing data in a separate task to avoid blocking the main thread
+                Task.Run(() => ProcessTimingData(e.Data));
             }
         }
 
         private void ProcessTimingData(string data)
         {
-            // Based on the README.md and the actual signals received
-            // Start signal format: "Device 1 Line: 0007 C0M 10:54:11:31 01"
-            // Finish signal format: "Device 1 Line: 0003 c1M 00005.22 01"
-            
-            string[] parts = data.Split(new char[] { ' ' }, StringSplitOptions.RemoveEmptyEntries);
-            
-            // Debug: Log all parts to help troubleshoot
-            AddLogLine($"Signal parts: {string.Join(", ", parts)}");
-            
-            if (parts.Length >= 4)
+            try
             {
-                // Extract the channel code (e.g., "C0M", "c1M")
-                string channelCode = null;
-                int channelCodeIndex = -1;
+                // Based on the README.md and the actual signals received
+                // Start signal format: "Device 1 Line: 0007 C0M 10:54:11:31 01"
+                // Finish signal format: "Device 1 Line: 0003 c1M 00005.22 01"
                 
-                for (int i = 0; i < parts.Length; i++)
+                string[] parts = data.Split(new char[] { ' ' }, StringSplitOptions.RemoveEmptyEntries);
+                
+                // Debug: Log all parts to help troubleshoot
+                this.BeginInvoke(new Action(() => {
+                    AddLogLine($"Signal parts: {string.Join(", ", parts)}");
+                }));
+                
+                if (parts.Length >= 4)
                 {
-                    string part = parts[i];
-                    // Look for typical channel codes
-                    if (part.Length >= 3 && 
-                        (part.StartsWith("C", StringComparison.OrdinalIgnoreCase) || 
-                         part.StartsWith("c", StringComparison.OrdinalIgnoreCase)) && 
-                        part.EndsWith("M", StringComparison.OrdinalIgnoreCase))
-                    {
-                        channelCode = part;
-                        channelCodeIndex = i;
-                        break;
-                    }
-                }
-                
-                AddLogLine($"Channel code detected: {channelCode ?? "none"} at position {channelCodeIndex}");
-                
-                // Check for start signal (C0M/c0M)
-                bool isStartSignal = channelCode != null && 
-                                    (channelCode.Equals("C0M", StringComparison.OrdinalIgnoreCase) || 
-                                     channelCode.Equals("COM", StringComparison.OrdinalIgnoreCase));
-                
-                // Check for finish signal (C1M/c1M)
-                bool isFinishSignal = channelCode != null && 
-                                     channelCode.Equals("C1M", StringComparison.OrdinalIgnoreCase);
-                
-                AddLogLine($"Signal analysis: isStart={isStartSignal}, isFinish={isFinishSignal}");
-                
-                if (isStartSignal && channelCodeIndex >= 0 && channelCodeIndex + 1 < parts.Length)
-                {
-                    // Get the time value from the position after the channel code
-                    string timeStr = parts[channelCodeIndex + 1];
+                    // Extract the channel code (e.g., "C0M", "c1M")
+                    string channelCode = null;
+                    int channelCodeIndex = -1;
                     
-                    if (!string.IsNullOrEmpty(timeStr))
+                    for (int i = 0; i < parts.Length; i++)
                     {
-                        lastStartTimeString = timeStr;
-                        startTime = DateTime.Now; // We'll use this for calculating elapsed time
-                        
-                        // Send start signal to WebSocket clients
-                        string startMessage = $"{{\"event\":\"start\",\"time\":\"{timeStr}\"}}";
-                        Task.Run(() => BroadcastToWebSocketClientsAsync(startMessage));
-                        AddLogLine($"Start signal detected: {timeStr}");
+                        string part = parts[i];
+                        // Look for typical channel codes
+                        if (part.Length >= 3 && 
+                            (part.StartsWith("C", StringComparison.OrdinalIgnoreCase) || 
+                             part.StartsWith("c", StringComparison.OrdinalIgnoreCase)) && 
+                            part.EndsWith("M", StringComparison.OrdinalIgnoreCase))
+                        {
+                            channelCode = part;
+                            channelCodeIndex = i;
+                            break;
+                        }
                     }
-                    else
-                    {
-                        AddLogLine("Start signal detected but could not find time value");
-                    }
-                }
-                else if (isFinishSignal && channelCodeIndex >= 0 && channelCodeIndex + 1 < parts.Length)
-                {
-                    // Get the time value from the position after the channel code
-                    string timeStr = parts[channelCodeIndex + 1];
                     
-                    if (!string.IsNullOrEmpty(timeStr))
+                    this.BeginInvoke(new Action(() => {
+                        AddLogLine($"Channel code detected: {channelCode ?? "none"} at position {channelCodeIndex}");
+                    }));
+                    
+                    // Check for start signal (C0M/c0M)
+                    bool isStartSignal = channelCode != null && 
+                                        (channelCode.Equals("C0M", StringComparison.OrdinalIgnoreCase) || 
+                                         channelCode.Equals("COM", StringComparison.OrdinalIgnoreCase));
+                    
+                    // Check for finish signal (C1M/c1M)
+                    bool isFinishSignal = channelCode != null && 
+                                         channelCode.Equals("C1M", StringComparison.OrdinalIgnoreCase);
+                    
+                    this.BeginInvoke(new Action(() => {
+                        AddLogLine($"Signal analysis: isStart={isStartSignal}, isFinish={isFinishSignal}");
+                    }));
+                    
+                    if (isStartSignal && channelCodeIndex >= 0 && channelCodeIndex + 1 < parts.Length)
                     {
-                        // Send finish signal to WebSocket clients with time
-                        string finishMessage = $"{{\"event\":\"finish\",\"time\":\"{timeStr}\"}}";
-                        Task.Run(() => BroadcastToWebSocketClientsAsync(finishMessage));
-                        AddLogLine($"Finish signal detected: {timeStr}");
+                        // Get the time value from the position after the channel code
+                        string timeStr = parts[channelCodeIndex + 1];
                         
-                        // Reset start time
-                        startTime = null;
+                        if (!string.IsNullOrEmpty(timeStr))
+                        {
+                            lastStartTimeString = timeStr;
+                            startTime = DateTime.Now; // We'll use this for calculating elapsed time
+                            
+                            // Send start signal to WebSocket clients
+                            string startMessage = $"{{\"event\":\"start\",\"time\":\"{timeStr}\"}}";
+                            BroadcastToWebSocketClientsAsync(startMessage).ConfigureAwait(false);
+                            
+                            this.BeginInvoke(new Action(() => {
+                                AddLogLine($"Start signal detected: {timeStr}");
+                            }));
+                        }
+                        else
+                        {
+                            this.BeginInvoke(new Action(() => {
+                                AddLogLine("Start signal detected but could not find time value");
+                            }));
+                        }
                     }
-                    else
+                    else if (isFinishSignal && channelCodeIndex >= 0 && channelCodeIndex + 1 < parts.Length)
                     {
-                        AddLogLine("Finish signal detected but could not find time value");
+                        // Get the time value from the position after the channel code
+                        string timeStr = parts[channelCodeIndex + 1];
+                        
+                        if (!string.IsNullOrEmpty(timeStr))
+                        {
+                            // Send finish signal to WebSocket clients with time
+                            string finishMessage = $"{{\"event\":\"finish\",\"time\":\"{timeStr}\"}}";
+                            BroadcastToWebSocketClientsAsync(finishMessage).ConfigureAwait(false);
+                            
+                            this.BeginInvoke(new Action(() => {
+                                AddLogLine($"Finish signal detected: {timeStr}");
+                            }));
+                            
+                            // Reset start time
+                            startTime = null;
+                        }
+                        else
+                        {
+                            this.BeginInvoke(new Action(() => {
+                                AddLogLine("Finish signal detected but could not find time value");
+                            }));
+                        }
                     }
                 }
+            }
+            catch (Exception ex)
+            {
+                this.BeginInvoke(new Action(() => {
+                    AddLogLine($"Error processing timing data: {ex.Message}");
+                }));
             }
         }
 
