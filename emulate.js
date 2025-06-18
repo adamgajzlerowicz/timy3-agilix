@@ -10,6 +10,8 @@ const PATH = "/timy3";
 
 let startTime = null;
 let activeStartTimeString = null; // Stores the active start time string sent to clients
+let isRunning = false; // Tracks if timing is currently active
+let runningInterval = null; // Interval for sending running status updates
 
 wss.on("connection", (ws) => {
   console.log("Client connected");
@@ -25,6 +27,13 @@ wss.on("connection", (ws) => {
       `Sent active start signal to new client: ${activeStartTimeString}`,
     );
   }
+
+  // Send current running status to new client
+  const runningEvent = {
+    event: "running",
+    value: isRunning,
+  };
+  ws.send(JSON.stringify(runningEvent));
 
   ws.on("close", () => {
     console.log("Client disconnected");
@@ -83,11 +92,30 @@ process.stdin.on("keypress", (str, key) => {
       String(startTime.getMilliseconds()).padStart(3, "0");
 
     activeStartTimeString = timeString; // Store the active start time
+    isRunning = true; // Set running state to true
     const startEvent = {
       event: "start",
       time: timeString,
     };
     broadcast(startEvent);
+
+    // Broadcast running status
+    const runningEvent = {
+      event: "running",
+      value: true,
+    };
+    broadcast(runningEvent);
+
+    // Start interval to send running status every second
+    runningInterval = setInterval(() => {
+      if (isRunning) {
+        const runningEvent = {
+          event: "running",
+          value: true,
+        };
+        broadcast(runningEvent);
+      }
+    }, 1000);
   }
 
   if (key.name === "f") {
@@ -106,5 +134,19 @@ process.stdin.on("keypress", (str, key) => {
     broadcast(finishEvent);
     startTime = null; // Reset start time
     activeStartTimeString = null; // Clear active start time
+    isRunning = false; // Set running state to false
+
+    // Clear the running interval
+    if (runningInterval) {
+      clearInterval(runningInterval);
+      runningInterval = null;
+    }
+
+    // Broadcast running status
+    const runningEvent = {
+      event: "running",
+      value: false,
+    };
+    broadcast(runningEvent);
   }
 });

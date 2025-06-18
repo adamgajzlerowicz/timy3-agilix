@@ -24,6 +24,8 @@ namespace AlgeTimyUsb.SampleApplication
         private DateTime? startTime;
         private string lastStartTimeString;
         private string activeStartTimeString; // Stores the actual start time sent to WebSocket clients
+        private bool isRunning = false; // Tracks if timing is currently active
+        private Timer runningStatusTimer; // Timer for sending running status updates
 
         public Form1()
         {
@@ -31,6 +33,11 @@ namespace AlgeTimyUsb.SampleApplication
 
             // Register the click event handler for the listbox
             listBox1.Click += new EventHandler(listBox1_Click);
+
+            // Initialize the running status timer
+            runningStatusTimer = new Timer();
+            runningStatusTimer.Interval = 1000; // 1 second
+            runningStatusTimer.Tick += RunningStatusTimer_Tick;
         }
 
         private void Form1_Load(object sender, EventArgs e)
@@ -187,6 +194,23 @@ namespace AlgeTimyUsb.SampleApplication
                         }
                     });
                 }
+
+                // Send current running status to new client
+                string runningMessage = $"{{\"event\":\"running\",\"value\":{(isRunning ? "true" : "false")}}}";
+                _ = Task.Run(async () => {
+                    try
+                    {
+                        var messageBytes = Encoding.UTF8.GetBytes(runningMessage);
+                        var messageSegment = new ArraySegment<byte>(messageBytes);
+                        await webSocket.SendAsync(messageSegment, WebSocketMessageType.Text, true, CancellationToken.None);
+                    }
+                    catch (Exception ex)
+                    {
+                        this.BeginInvoke(new Action(() => {
+                            AddLogLine($"Failed to send running status to new client: {ex.Message}");
+                        }));
+                    }
+                });
 
                 // Handle client in separate task
                 _ = HandleWebSocketClientAsync(webSocket, cancellationToken);
@@ -400,12 +424,20 @@ namespace AlgeTimyUsb.SampleApplication
 
                         lastStartTimeString = deviceTimeValue;
                         startTime = DateTime.Now;
+                        isRunning = true; // Set running state to true
 
                         // Use PC real time instead of device time for start signal
                         string pcTimeString = startTime.Value.ToString("HH:mm:ss.fff");
                         activeStartTimeString = pcTimeString; // Store the active start time
                         string startMessage = $"{{\"event\":\"start\",\"time\":\"{pcTimeString}\"}}";
                         Task.Run(() => BroadcastToWebSocketClientsAsync(startMessage));
+
+                        // Broadcast running status
+                        string runningMessage = $"{{\"event\":\"running\",\"value\":true}}";
+                        Task.Run(() => BroadcastToWebSocketClientsAsync(runningMessage));
+
+                        // Start the timer to send running status every second
+                        runningStatusTimer.Start();
 
                         AddLogLine($"START SIGNAL SENT TO WEBSOCKET WITH PC TIME: {pcTimeString} (Device time was: {deviceTimeValue})");
                     }
@@ -446,6 +478,14 @@ namespace AlgeTimyUsb.SampleApplication
                         // Reset start time and clear active start time
                         startTime = null;
                         activeStartTimeString = null;
+                        isRunning = false; // Set running state to false
+
+                        // Stop the running status timer
+                        runningStatusTimer.Stop();
+
+                        // Broadcast running status
+                        string runningMessage = $"{{\"event\":\"running\",\"value\":false}}";
+                        Task.Run(() => BroadcastToWebSocketClientsAsync(runningMessage));
                     }
                     else
                     {
@@ -520,6 +560,13 @@ namespace AlgeTimyUsb.SampleApplication
             timyUsb.PnPDeviceAttached -= new EventHandler(timyUsb_PnPDeviceAttached);
             timyUsb.PnPDeviceDetached -= new EventHandler(timyUsb_PnPDeviceDetached);
             timyUsb.HeartbeatReceived -= new EventHandler<Alge.HeartbeatReceivedEventArgs>(timyUsb_HeartbeatReceived);
+
+            // Stop and dispose the timer
+            if (runningStatusTimer != null)
+            {
+                runningStatusTimer.Stop();
+                runningStatusTimer.Dispose();
+            }
         }
 
         private void button1_Click(object sender, EventArgs e)
@@ -594,6 +641,16 @@ namespace AlgeTimyUsb.SampleApplication
                 Clipboard.SetText(str.ToString());
                 // Briefly highlight the item to indicate it was copied
                 AddLogLine("Copied to clipboard: " + str.ToString());
+            }
+        }
+
+        // Timer tick event handler for sending running status updates
+        private void RunningStatusTimer_Tick(object sender, EventArgs e)
+        {
+            if (isRunning)
+            {
+                string runningMessage = $"{{\"event\":\"running\",\"value\":true}}";
+                Task.Run(() => BroadcastToWebSocketClientsAsync(runningMessage));
             }
         }
 
