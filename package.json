@@ -1,0 +1,11 @@
+{
+  "name": "timy3-agilix",
+  "version": "1.0.0",
+  "main": "index.js",
+  "repository": "git@github.com:adamgajzlerowicz/timy3-agilix.git",
+  "author": "Adam Gajzlerowicz <nelf86@gmail.com>",
+  "license": "MIT",
+  "dependencies": {
+    "ws": "^8.18.2"
+  }
+}

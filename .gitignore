@@ -148,3 +148,5 @@ AlgeTimyUsb.SampleApplicationCSharp/bin/Debug/AlgeTimyUsb.SampleApplication.pdb
 AlgeTimyUsb.SampleApplicationCSharp/obj/Debug\ Dummy/
 AlgeTimyUsb.SampleApplicationCSharp/obj/x64/Debug\ Dummy/
 AlgeTimyUsb.SampleApplicationCSharp/obj/x86/Debug\ Dummy/
+
+node_modules
