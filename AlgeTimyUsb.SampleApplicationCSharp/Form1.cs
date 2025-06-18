@@ -23,11 +23,12 @@ namespace AlgeTimyUsb.SampleApplication
         private object clientsLock = new object();
         private DateTime? startTime;
         private string lastStartTimeString;
+        private string activeStartTimeString; // Stores the actual start time sent to WebSocket clients
 
         public Form1()
         {
             InitializeComponent();
-            
+
             // Register the click event handler for the listbox
             listBox1.Click += new EventHandler(listBox1_Click);
         }
@@ -36,15 +37,15 @@ namespace AlgeTimyUsb.SampleApplication
         {
             AddLogLine("Form loading...");
             AddLogLine("Process is " + (IntPtr.Size == 8 ? "x64" : "x86"));
-            
+
             try
             {
                 // Start WebSocket server in a separate task to avoid blocking UI
                 Task.Run(() => StartWebSocketServer());
-                
+
                 // Initialize TimyUsb
                 timyUsb = new Alge.TimyUsb(this);
-                
+
                 // Set up event handlers
                 timyUsb.DeviceConnected += new EventHandler<Alge.DeviceChangedEventArgs>(timyUsb_DeviceConnected);
                 timyUsb.DeviceDisconnected += new EventHandler<Alge.DeviceChangedEventArgs>(timyUsb_DeviceDisconnected);
@@ -54,12 +55,12 @@ namespace AlgeTimyUsb.SampleApplication
                 timyUsb.PnPDeviceAttached += new EventHandler(timyUsb_PnPDeviceAttached);
                 timyUsb.PnPDeviceDetached += new EventHandler(timyUsb_PnPDeviceDetached);
                 timyUsb.HeartbeatReceived += new EventHandler<Alge.HeartbeatReceivedEventArgs>(timyUsb_HeartbeatReceived);
-                
+
                 // Start TimyUsb
                 timyUsb.Start();
                 btnStart.Enabled = false;
                 btnStop.Enabled = true;
-                
+
                 // Check for already connected devices with a small delay
                 this.BeginInvoke(new Action(() => {
                     int connectedCount = timyUsb.ConnectedDevicesCount;
@@ -73,7 +74,7 @@ namespace AlgeTimyUsb.SampleApplication
                         AddLogLine("No devices connected at startup");
                     }
                 }));
-                
+
                 AddLogLine("Form loaded successfully");
             }
             catch (Exception ex)
@@ -89,16 +90,16 @@ namespace AlgeTimyUsb.SampleApplication
             {
                 webSocketCancellation = new CancellationTokenSource();
                 httpListener = new HttpListener();
-                
+
                 // Only listen on localhost to reduce startup time and security issues
                 httpListener.Prefixes.Add("http://localhost:8087/");
-                
+
                 httpListener.Start();
-                
+
                 this.BeginInvoke(new Action(() => {
                     AddLogLine("WebSocket server started at ws://localhost:8087/timy3");
                 }));
-                
+
                 AcceptWebSocketClientsAsync(webSocketCancellation.Token).ConfigureAwait(false);
             }
             catch (Exception ex)
@@ -116,7 +117,7 @@ namespace AlgeTimyUsb.SampleApplication
                 while (!cancellationToken.IsCancellationRequested)
                 {
                     HttpListenerContext context = await httpListener.GetContextAsync();
-                    
+
                     if (context.Request.IsWebSocketRequest && context.Request.Url.AbsolutePath == "/timy3")
                     {
                         ProcessWebSocketRequest(context, cancellationToken);
@@ -146,23 +147,47 @@ namespace AlgeTimyUsb.SampleApplication
                 }
             }
         }
-        
+
         private async void ProcessWebSocketRequest(HttpListenerContext context, CancellationToken cancellationToken)
         {
             try
             {
                 HttpListenerWebSocketContext webSocketContext = await context.AcceptWebSocketAsync(null);
                 WebSocket webSocket = webSocketContext.WebSocket;
-                
+
                 this.BeginInvoke(new Action(() => {
                     AddLogLine("WebSocket client connected");
                 }));
-                
+
                 lock (clientsLock)
                 {
                     connectedClients.Add(webSocket);
                 }
-                
+
+                // If timing is active, send start signal to new client
+                if (!string.IsNullOrEmpty(activeStartTimeString))
+                {
+                    string startMessage = $"{{\"event\":\"start\",\"time\":\"{activeStartTimeString}\"}}";
+                    _ = Task.Run(async () => {
+                        try
+                        {
+                            var messageBytes = Encoding.UTF8.GetBytes(startMessage);
+                            var messageSegment = new ArraySegment<byte>(messageBytes);
+                            await webSocket.SendAsync(messageSegment, WebSocketMessageType.Text, true, CancellationToken.None);
+
+                            this.BeginInvoke(new Action(() => {
+                                AddLogLine($"Sent active start signal to new client: {activeStartTimeString}");
+                            }));
+                        }
+                        catch (Exception ex)
+                        {
+                            this.BeginInvoke(new Action(() => {
+                                AddLogLine($"Failed to send start signal to new client: {ex.Message}");
+                            }));
+                        }
+                    });
+                }
+
                 // Handle client in separate task
                 _ = HandleWebSocketClientAsync(webSocket, cancellationToken);
             }
@@ -177,14 +202,14 @@ namespace AlgeTimyUsb.SampleApplication
         private async Task HandleWebSocketClientAsync(WebSocket webSocket, CancellationToken cancellationToken)
         {
             var buffer = new byte[1024];
-            
+
             try
             {
                 while (webSocket.State == WebSocketState.Open && !cancellationToken.IsCancellationRequested)
                 {
                     WebSocketReceiveResult result = await webSocket.ReceiveAsync(
                         new ArraySegment<byte>(buffer), cancellationToken);
-                        
+
                     if (result.MessageType == WebSocketMessageType.Close)
                     {
                         await webSocket.CloseAsync(
@@ -210,7 +235,7 @@ namespace AlgeTimyUsb.SampleApplication
                 {
                     connectedClients.Remove(webSocket);
                 }
-                
+
                 if (webSocket.State != WebSocketState.Closed)
                 {
                     try
@@ -222,7 +247,7 @@ namespace AlgeTimyUsb.SampleApplication
                     }
                     catch { }
                 }
-                
+
                 this.BeginInvoke(new Action(() => {
                     AddLogLine("WebSocket client disconnected");
                 }));
@@ -233,18 +258,18 @@ namespace AlgeTimyUsb.SampleApplication
         {
             List<WebSocket> clientsCopy;
             List<WebSocket> clientsToRemove = new List<WebSocket>();
-            
+
             lock (clientsLock)
             {
                 clientsCopy = new List<WebSocket>(connectedClients);
             }
-            
+
             if (clientsCopy.Count == 0)
                 return;
-                
+
             var messageBytes = Encoding.UTF8.GetBytes(message);
             var messageSegment = new ArraySegment<byte>(messageBytes);
-            
+
             foreach (var client in clientsCopy)
             {
                 if (client.State == WebSocketState.Open)
@@ -269,7 +294,7 @@ namespace AlgeTimyUsb.SampleApplication
                     clientsToRemove.Add(client);
                 }
             }
-            
+
             // Remove any failed clients
             if (clientsToRemove.Count > 0)
             {
@@ -280,7 +305,7 @@ namespace AlgeTimyUsb.SampleApplication
                         connectedClients.Remove(client);
                     }
                 }
-                
+
                 this.BeginInvoke(new Action(() => {
                     AddLogLine($"Removed {clientsToRemove.Count} disconnected WebSocket clients");
                 }));
@@ -319,7 +344,7 @@ namespace AlgeTimyUsb.SampleApplication
         {
             // Log the raw signal with a special prefix to make it easier to identify
             AddLogLine("RAW SIGNAL: " + e.Data);
-            
+
             // Also log the standard format
             AddLogLine("Device " + e.Device.Id + " Line: " + e.Data);
 
@@ -339,48 +364,50 @@ namespace AlgeTimyUsb.SampleApplication
             try
             {
                 AddLogLine($"PARSING: {data}");
-                
+
                 if (string.IsNullOrEmpty(data))
                 {
                     AddLogLine("EMPTY DATA - SKIPPING");
                     return;
                 }
-                
+
                 // Simple string-based detection without arrays
                 string cleanData = data.Replace(",", " ").Trim();
                 AddLogLine($"CLEAN DATA: {cleanData}");
-                
+
                 // Check for start signal (contains "c0")
                 if (cleanData.ToLower().Contains(" c0 "))
                 {
                     AddLogLine("FOUND C0 - START SIGNAL");
-                    
-                    // Extract time value after "c0"
+
+                    // Extract time value after "c0" for logging purposes
                     string[] parts = cleanData.Split(new char[] { ' ' }, StringSplitOptions.RemoveEmptyEntries);
-                    string timeValue = null;
-                    
+                    string deviceTimeValue = null;
+
                     // Find c0 and get the next part
                     for (int i = 0; i < parts.Length; i++)
                     {
                         if (parts[i].ToLower() == "c0" && i + 1 < parts.Length)
                         {
-                            timeValue = parts[i + 1];
+                            deviceTimeValue = parts[i + 1];
                             break;
                         }
                     }
-                    
-                    if (!string.IsNullOrEmpty(timeValue))
+
+                    if (!string.IsNullOrEmpty(deviceTimeValue))
                     {
-                        AddLogLine($"START TIME: {timeValue}");
-                        
-                        lastStartTimeString = timeValue;
+                        AddLogLine($"DEVICE START TIME: {deviceTimeValue}");
+
+                        lastStartTimeString = deviceTimeValue;
                         startTime = DateTime.Now;
-                        
-                        // Send to WebSocket
-                        string startMessage = $"{{\"event\":\"start\",\"time\":\"{timeValue}\"}}";
+
+                        // Use PC real time instead of device time for start signal
+                        string pcTimeString = startTime.Value.ToString("HH:mm:ss.fff");
+                        activeStartTimeString = pcTimeString; // Store the active start time
+                        string startMessage = $"{{\"event\":\"start\",\"time\":\"{pcTimeString}\"}}";
                         Task.Run(() => BroadcastToWebSocketClientsAsync(startMessage));
-                        
-                        AddLogLine("START SIGNAL SENT TO WEBSOCKET");
+
+                        AddLogLine($"START SIGNAL SENT TO WEBSOCKET WITH PC TIME: {pcTimeString} (Device time was: {deviceTimeValue})");
                     }
                     else
                     {
@@ -391,11 +418,11 @@ namespace AlgeTimyUsb.SampleApplication
                 else if (cleanData.ToLower().Contains(" c1 "))
                 {
                     AddLogLine("FOUND C1 - FINISH SIGNAL");
-                    
+
                     // Extract time value after "c1"
                     string[] parts = cleanData.Split(new char[] { ' ' }, StringSplitOptions.RemoveEmptyEntries);
                     string timeValue = null;
-                    
+
                     // Find c1 and get the next part
                     for (int i = 0; i < parts.Length; i++)
                     {
@@ -405,19 +432,20 @@ namespace AlgeTimyUsb.SampleApplication
                             break;
                         }
                     }
-                    
+
                     if (!string.IsNullOrEmpty(timeValue))
                     {
                         AddLogLine($"FINISH TIME: {timeValue}");
-                        
+
                         // Send to WebSocket
                         string finishMessage = $"{{\"event\":\"finish\",\"time\":\"{timeValue}\"}}";
                         Task.Run(() => BroadcastToWebSocketClientsAsync(finishMessage));
-                        
+
                         AddLogLine("FINISH SIGNAL SENT TO WEBSOCKET");
-                        
-                        // Reset start time
+
+                        // Reset start time and clear active start time
                         startTime = null;
+                        activeStartTimeString = null;
                     }
                     else
                     {
@@ -466,7 +494,7 @@ namespace AlgeTimyUsb.SampleApplication
             {
                 webSocketCancellation.Cancel();
                 httpListener?.Stop();
-                
+
                 // Close all WebSocket connections
                 lock (clientsLock)
                 {
@@ -482,7 +510,7 @@ namespace AlgeTimyUsb.SampleApplication
                     connectedClients.Clear();
                 }
             }
-            
+
             // Unregister TimyUsb event handlers
             timyUsb.DeviceConnected -= new EventHandler<Alge.DeviceChangedEventArgs>(timyUsb_DeviceConnected);
             timyUsb.DeviceDisconnected -= new EventHandler<Alge.DeviceChangedEventArgs>(timyUsb_DeviceDisconnected);
@@ -556,7 +584,7 @@ namespace AlgeTimyUsb.SampleApplication
             if (str != null)
                 Clipboard.SetText(str.ToString());
         }
-        
+
         // Add a single-click handler to copy to clipboard
         private void listBox1_Click(object sender, EventArgs e)
         {
@@ -569,6 +597,6 @@ namespace AlgeTimyUsb.SampleApplication
             }
         }
 
-   
+
     }
 }
