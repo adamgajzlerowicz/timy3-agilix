@@ -1,0 +1,821 @@
+Important Information
+General
+Before using your ALGE-TIMING device read the complete manual carefully. It is part of the device and
+contains important information about installation, safety and its intended use. This manual cannot
+cover all conceivable applications. For further information or in case of problems that are mentioned
+not at all or not sufficiently detailed, please contact your ALGE-TIMING representative. You can find
+contact details on our homepage www.alge-timing.com
+Safety
+Apart from the information of this manual all general safety and accident prevention regulations of the
+legislator must be taken into account.
+The device must only be used by trained persons. The setting-up and installation must only be executed according to the manufacturer’s data.
+Intended Use
+The device must only be used for its intended applications. Technical modifications and any misuse
+are prohibited because of the risks involved! ALGE-TIMING is not liable for damages that are caused by
+improper use or incorrect operation.
+Power supply
+The stated voltage on the type plate must correspond to voltage of the power source. Check all connections and plugs before usage. Damaged connection wires must be replaced immediately by an
+authorized electrician. The device must only be connected to an electric supply that has been installed
+by an electrician according to IEC 60364-1. Never touch the mains plug with wet hands! Never touch
+live parts!
+Cleaning
+Please clean the outside of the device only with a smooth cloth. Detergents can cause damage. Never
+submerge in water, never open or clean with wet cloth. The cleaning must not be carried out by hose
+or high-pressure (risk of short circuits or other damage).
+Liability Limitations
+All technical information, data and information for installation and operation correspond to the latest
+status at time of printing and are made in all conscience considering our past experience and knowledge. Information, pictures and description do not entitle to base any claims. The manufacturer is not
+liable for damage due to failure to observe the manual, improper use, incorrect repairs, technical modifications, use of unauthorized spare parts. Translations are made in all conscience. We assume no
+liability for translation mistakes, even if the translation is carried out by us or on our behalf.
+Disposal
+If a label is placed on the device showing a crossed out dustbin on wheels (see drawing),
+the European directive 2002/96/EG applies for this device.
+Please get informed about the applicable regulations for separate collection of electrical
+and electronical waste in your country and do not dispose of the old devices as household
+waste. Correct disposal of old equipment protects the environment and humans against
+negative consequences!
+Copyright by ALGE-TIMING GmbH
+All rights reserved. Any duplication, either in full or in part, requires the prior written consent of the
+copyright holder.
+Copyright by ALGE-Timing
+Subject to changes!
+ALGE-TIMING GmbH
+Rotkreuzstraße 39
+A-6890 Lustenau
+www.alge-timing.com 
+TIMY General
+Page 3
+Control elements
+1 USB-interface
+2 Charging socket
+3 ALGE multiport
+4 Connection for displayboard
+5 Connection for start emitter (C0)
+6 Connection for finish emitter (C1)
+7 Standard ALGE photocell socket 
+TIMY General
+Page 4
+Table of contents
+1 Device Description ...................................................................................................5
+1.1 TIMY Models..............................................................................................................5
+1.2 TIMY Software ...........................................................................................................6
+1.3 Driver Installation .......................................................................................................6
+1.4 Keypad.......................................................................................................................7
+2 Start Up .....................................................................................................................8
+2.1 Switch On...................................................................................................................8
+2.2 Switch Off...................................................................................................................8
+2.3 Choose Language......................................................................................................8
+2.4 Power Supply.............................................................................................................9
+3 Printer......................................................................................................................10
+3.1 Change of Paper......................................................................................................10
+4 Synchronising ........................................................................................................11
+4.1 Synchronisation of Other Devices with a TIMY:.......................................................11
+5 Connection of Auxiliary Devices...........................................................................11
+5.1 Channels..................................................................................................................11
+5.2 Delay and Block Times ............................................................................................11
+5.3 Diagram of Delay and Block Time ...........................................................................12
+6 TIMY Update............................................................................................................12
+6.1 Update with Cable 205-02 .......................................................................................13
+6.2 Update with USB Cable ...........................................................................................14
+7 Memory....................................................................................................................14
+8 Info Mode ................................................................................................................14
+9 GPS Synchronisation.............................................................................................15
+10 Menu ........................................................................................................................16
+10.1 CLASSEMENT.........................................................................................................16
+10.2 GENERAL................................................................................................................17
+10.3 CHANNELS .............................................................................................................18
+10.4 DISPLAY..................................................................................................................19
+10.5 INTERFACE.............................................................................................................19
+10.6 PRINTER .................................................................................................................20
+10.7 PROGRAM ..............................................................................................................20
+10.8 Program Specific Settings........................................................................................20
+10.9 KEYBOARD-LOCK..................................................................................................20
+11 Technical data ........................................................................................................21
+11.1 Pin assignment ........................................................................................................22
+12 Interfaces ................................................................................................................24
+12.1 RS232 Interface.......................................................................................................24
+12.2 RS485 Interface.......................................................................................................27
+12.3 Interface for displayboard ........................................................................................27
+13 USB Interface..........................................................................................................27
+TIMY General
+Page 5
+1 Device Description
+The ALGE TIMY is a handy device, equipped with high-quality technology.
+During the development, we have paid special attention to the self-evident principles of ALGETiming: ease of operation, extreme reliability and robust design. Latest technology, integrated
+into a casing especially designed for timing, result in a unique device.
+In spite of the handy dimensions, the TIMY provides a large and easy-to-use silicone keypad.
+It can be operated easily in any weather condition and even with gloves. The model TIMY
+PXE has an integrated printer that records the entire competition.
+Of course, the TIMY is also equipped with the necessary interfaces for communication with
+external devices. It posseses an interface for display boards, an RS232 interface for communication with a PC, an RS485 interface to establish a network of timing devices and a futureproof USB interface.
+The generously dimensioned memory of the TIMY can store up to 15 000 times. All memory
+times can be shown on the display or transmitted to a PC by RS 232 or USB interface at any
+time.
+1.1 TIMY Models
+TIMY S (not produced any more!) :
+TIMY S is a timing device or terminal without printer. Equipped with a standard
+quartz, it performs timing tasks with quartz-accuracy. The display works up
+to –5° C (summer sports or indoor).
+TIMY XE:
+TIMY XE is a timing device without printer. Equipped with a temperature compensated
+quartz-oscillator, it performs timing tasks with highest accuracy. The extended
+temperature range enables using the TIMY up to –20° C (for summer and winter sports).
+TIMY P (not produced any more!) :
+TIMY P is a timing device or terminal with integrated printer. Equipped with a
+standard quartz, it performs timing tasks with quartz-accuracy. The display
+works up to –5° C (summer sports or interior).
+TIMY PXE:
+TIMY PXE is a timing device with integrated printer. Provided with a temperature
+compensated quartz-oscillator, it will perform timing tasks with highest accuracy. The
+extended temperature range enables using the TIMY up to –20° C
+(for summer and winter sports). 
+TIMY General
+Page 6
+1.2 TIMY Software
+Starting from TIMY version V0591 all programs are activated for free. We recommend to update older versions.
+Currently available programs:
+Stopwatch: Universal timing program which is suitable for several runs (run/total
+time).
+Backup: to measure time-of-day times (e. g. as backup-system or as time reference for the PC)
+PC-Timer: to measure time-of-day times with simultaneous output of the running
+time in 1/10 seconds via the RS232 interface. Ideal as an accurate timing device for PC
+LapTimer: Timing program with run times and lap times (e. g. for motor sport)
+TrackTimer: Timing program for events with several lanes, e. g. athletics and swimming
+Training Lite: Universal training software (intermediate times are possible)
+Training REF: Training software with reference run (several competitors on course)
+Speed: Speed measurement
+Commander: Terminal for diverse subprograms (see manual)
+CycleStart: Program for track cycling with countdown and lap counter
+Terminal: Terminal for judges (e. g. gymnastics)
+Wind Speed: Measuring the windspeed only with anemometer WS2
+Parallelslalom: Timing for parallel slalom (difference time of both slopes)
+Dual Timer: Timing of two separate courses
+1.3 Driver Installation
+For installation of drivers, separate manuals are available. You can download them on our
+homepage www.alge-timing.com or contact your ALGE representative. 
+TIMY General
+Page 7
+1.4 Keypad
+The TIMY has a weather-proof (and water-proof) silicone keypad. The keypad is ideal for
+outdoor usage. The keys are raised and have ideal pressure points. Although the TIMY is
+small in dimensions, they are easy to operate.
+Control keys: all-purpose keys; the function of
+each one is always visible in the display.
+START/ON: Key for manual start impulse and to switch on the TIMY.
+STOP/OFF: Key for manual stop impulse and to switch off the TIMY.
+Printer: Key for paper output. If you press the combination and ,
+you open the printer menu.
+2nd: This key is always used in combination with a second key (additional function).
+ K
+Menu: Key to enter the device menu.
+CLR: Key to clear the marked times or to clear the memory.
+Cursor: eys to move the cursor in the display.
++ Beginning of a list
+ + End of a list
+K green: To confirm the commands, to confirm start inputs or to switch the
+K red: To confirm the commands, to confirm finish inputs or to switch the TIMY
+O
+TIMY on.
+O
+off. 
+TIMY General
+Page 8
+2 Start Up
+2.1 Switch On
+• Press button „START/ON“
+• Display shows:
+• “Really switch-on? Press the green OKbutton!“
+• If you press the green OK-button within
+10 seconds, the TIMY will start, otherwise it will automatically switch-off.
+2.2 Switch Off
+You have got two possibilities to switch off the TIMY:
+Method 1:
+• Press button „STOP/OFF“ for 3 seconds
+• Display shows:
+• “Really switch-off? Press the red OK-button!“
+• If you press the red OK-button within 10 seconds, the TIMY
+will switch off, otherwise it starts again at the last used programm.
+Method 2:
+• Press buttons „2nd“ and „STOP/OFF“
+• Display shows:
+• “Really switch-off?” Press the green OK-button.
+• If you press the red OK-button within 10 seconds,
+the TIMY will switch off. Otherwise it will automatically stay switched on.
+2.3 Choose Language
+Currently, you can choose between the following languages: German, English, French and
+Italian.
+Press the menu button to enter the main menu. Choose “general” , “language” and then “requested language”. Choose desired language and press menu button to reenter the run
+mode. 
+TIMY General
+Page 9
+2.4 Power Supply
+The TIMY has several possibilities for power supply:
+External supply +8 to 15 VDC:
+• Power supply unit PS12
+• Power supply unit PS12A , ideal as the deltron socket remains free
+• External battery e.g. 12V plumb rechargeable battery
+NLG4 and NLG8 must NOT be used as the off-load voltage is too high (TIMY might be destroyed!).
+With external supply of at least 11.5 VDC, the internal rechargeable batterys is charged.
+Internal supply:
+The battery compartment has space for 6 batteries type AA or rechargeable batteries. For
+TIMY P or PXE you have to use the heat-sealed rechargeable battery-packs ONLY!
+below
+5°C
+above
+5°C
+below
+5°C
+above
+5°C
+below
+5°C
+above
+5°C
+below
+5°C
+above
+5°C
+Alkaline Batteries yes yes yes yes no no no no
+NiCd-Rechargeable yes yes yes yes no no no no
+NiMH-Rechargeable no yes no yes no no no no
+NC-TIMY Battery Pack yes yes yes yes yes yes yes yes
+Timy PXE
+Timy
+Timy S Timy XE Timy P
+Battery types:
+Alkaline batteries: These batteries must never be used with a TIMY with integrated printer!
+At a temperature of –20°C, alkaline batteries have only 10% of their original capacity so they
+are only recommendable at warm weather conditions.
+Also out of environmental reasons we would recommend rechargeable batterys.
+NiMH rechargeable battery: The NiMH-rechargeable batteries can be used with a TIMY
+without printer, if used at temperatures higher than 5°C. The NiMH-rechargeable battery has
+a very poor performance at cold temperature.
+Attention: The TIMY with integrated printer must never be operated with this kind of rechargeable batteries!
+NiCd rechargeable battery: The NiCd-rechargeable battery is especially powerful at at
+temperatures below 5°C.
+Attention: The TIMY with integrated printer must never be operated with this kind of rechargeable batteries!
+NC-TIMY: NiCd-rechargeable battery block, especially designed for the TIMY. All TIMY with
+intergrated printer have to be operated with this accu block. Using another kind of batteries
+may cause a battery warning after some printouts and cease operation. 
+TIMY General
+Page 10
+Charging:
+The rechargeable batteries can be charged inside the TIMY with charger PS12 or PS12A, no
+matter if the TIMY is switched on or off.
+Depending on the type of rechargeable battery, the charging period is different:
+• NiCd rechargeable battery with 1 Ah approx. 14 hours
+• NiMH rechargeable battery with 1,5 Ah approx. 18 hours
+If you want to reduce the charging period, we recommend using the desk charger LG6AA. It
+is available with your ALGE-representative. However, you have to remove the rechargeable
+batterys from the TIMY.
+Charging switch:
+The TIMY has got a switch (hidden behind the
+battery label) for switching on or off the rechargeable battery charging.
+Using alkaline batteries, the charging must be
+switched off -position ALKALI-, as otherwise
+the TIMY can be destroyed by leakage of the
+batteries.
+During the operation with rechargeable
+batteries, the switch should be on position
+NiCd/NiMH so that the rechargeable batterys
+are charged.
+Attention: Never use alkaline batteries in a TIMY when the charging switch is set on
+NiCd/NiMH and a charger is connected.
+Operating period:
+The operating period depends on the TIMY Model, the batteries utilized and the ambient
+temperature.
+3 Printer
+TIMY P and PXE dispose of an integrated thermal printer. The best paper for the printer is
+our ALGE paper. It is recognizable by the ALGE logo print on the reverse side, available with
+your ALGE representative.
+3.1 Change of Paper
+• open printer cap
+• take out the paper axis
+• place the axis inside the paper roll
+• insert paper roll with axis into TIMY
+• thread paper through tear-off edge
+• close printer cap 
+TIMY General
+Page 11
+4 Synchronising
+For synchronising the TIMY, please follow the below
+instruction:
+• connect TIMY with cable 000-xx or
+• 004-xx with other timing devices.
+• switch on the TIMY
+• clear or retain memory
+• retain time and date or correct it and confirm
+or trigger with START button or via channel
+C0.
+4.1 Synchronisation of Other Devices with a TIMY:
+The TIMY can send a synchronisation signal via channel 0 every full minute when using the
+programs BACKUP or PC-TIMER.
+• connect the TIMY with the device to be synchronized
+• enter the time of day (next full minute) to be synchronized at the device
+• press and hold both buttons, the green and red OK button of the TIMY; on the
+full minute the TIMY sends a synchronisation impulse. The time of day of the
+timing device now runs.
+5 Connection of Auxiliary Devices
+A wide range of devices can be operated with the TIMY. Please ask your ALGE representative
+for the possibilities.
+5.1 Channels
+The TIMY has 9 independent timing channels.
+Attention: Channels 0 to 5 have a precision of 1/10 000 seconds but channel 6 to 8 only
+1/100 seconds.
+5.2 Delay and Block Times
+The variable delay times and blocked times prevent generating double impulses and losing
+impulses. The delay time and the blocked time can be changed in the menu.
+5.2.1 Delay Time
+After triggering an impulse, further impulses of the same impulse channel will be disabled for
+the duration of the delay time.
+Base settings: start channel C0 0.1s
+ stop channel C1 to C9 0.03s
+5.2.2 Block Time
+The block time is the theoretic minimum interval between two valid impulses of the same
+channel. Impulses within the block time are saved as invalid. The block time is only supported by certain programs.
+That is to say, for an interval start of every 30 seconds the minimum clearance is approx. 20
+seconds. Thus the block time is 20 seconds, too. 
+TIMY General
+Page 12
+5.3 Diagram of Delay and Block Time
+et timing channel triggered
+1 timing channel is triggered – valid time is saved – block time starts
+2 end of impulse – delay time starts
+3 timing channel is triggered within the delay time – no impulse triggering
+4 end of impulse – delay time restarts
+5 timing channel is triggered within the block time – invalid time is saved but not printed
+6 end of impulse – delay time starts
+7 timing channel is triggered – valid time is saved – block time starts
+6 TIMY Update
+You update your TIMY for free – please visit our homepage www.alge-timing.com . 
+TIMY General
+Page 13
+6.1 Update with Cable 205-02
+• log into the internet
+• choose language
+• click on „download“ in the left column
+• click on „ALGE devices software (Flash Technology)“
+• if not installed yet, download “Install Manager”
+• open Install Manager and connect TIMY with cable 205-02 to the PC
+• click on “firmware RS232” in the Install Manager
+• the firmware automatically searches for TIMY
+• switch on the TIMY
+• as soon as firmware recognizes the TIMY, the following is displayed
+• choose method of update; recommendable is an internet update as the latest version
+is always available 
+TIMY General
+Page 14
+6.2 Update with USB Cable
+• if not yet done, the TIMY USB driver has to be installed
+• find the TIMY USB driver at Download/PC-Software/TIMY USB Update
+• start the Install Manager and click on TIMY USB
+• choose method of update
+7 Memory
+The memory of the TIMY can store approx. 13,000 times.
+When switching on, the memory can either be saved or
+deleted. The free and saved space is indicated.
+8 Info Mode
+Pressing the buttons opens the info mode.
+Important data is displayed.
+• external power supply – Yes or No
+• TIMY program version
+• TIMY boot version 
+TIMY General
+Page 15
+• battery voltage
+• output voltage
+Display without external supply
+• integrated printer
+• hardware number
+• state of timing channels (C0, C1, C2, C3)
+9 GPS Synchronisation
+It is possible to synchronise the TIMY with a GPS mouse. The GPS mouse “GPS-TY” works
+with all programs. The accuracy of such a synchronisation is up to 1/10 000 seconds.
+• The GPS mouse (picture: GPS 18LVC) needs no
+external power supply.
+• The baud rate of the TIMY has to be set to 9600
+Baud.
+• In the menu <channels> the item <TED-RX> has
+to be deactivated.
+• The GPS synchronises the TIMY. After this the
+TIMY runs with its own precision quartz and the
+GPS can be disconnected.The GPS Mouse can
+now be used to synchronise further devices.
+Instead of the day time setting, the display shows as indicated on the right. As long as it says “NO SIGNAL”, the GPS
+receiver is searching for satellites.
+When “OK -UTC +UTC NO” is displayed in the bottom
+line, the time for your region can be adjusted with keys <F1>
+and <F2>. As soon as the correct time is shown, press
+<OK>.
+Attention!
+After receipt of a valid GPS signal, the TIMY varifies the checksum and measures the duration
+of the sync signal.
+If the sync signal is erroneous, the TIMY carries out a reset. Thus it is impossible to generate
+an invalid sync time.
+If the TIMY is supplied by external power, it automatically restarts. In case of operation with
+internal power, the TIMY turns off and has to be restarted.
+Remove the GPS receiver from the TIMY. Press <OK> to
+start the selected program. 
+TIMY General
+Page 16
+10 Menu
+The TIMY menu allows you to adjust individual settings. Push to access the main
+menu. With the cursor buttons you can navigate through the menu.
+enter or exit the menu
+navigate up or down
+next
+previous
+Confirm the entry
+On the following pages the different menu items are described.
+The program specific menu settings are desribed in the seperately avialable manual for each
+program.
+Bold printed settings are the ALGE-TIMING factory settings.
+10.1 CLASSEMENT
+The classement menu offers two different options depending on the active program.
+10.1.1 ALL
+Prints an overall ranking of different saved times. According to each program the following
+options are available:
+• <RUNTIME> ranking sorted according to run time
+• <TOTALTIME> ranking sorted according to total time
+• <PRINT MEMORY> prints the memory
+• <MEMORYTIME> prints times of previous heat
+• <PROTOCOLL> prints a protocol of all times
+10.1.2 CLASS
+Prints a ranking of one class. Then choose the start numbers for this class. Only one class
+can be printed at a time.
+10.1.3 START LIST
+This function prints the start list of the second heat. 
+TIMY General
+Page 17
+10.2 GENERAL
+In this menu item general settings regarding the timing can be made.
+10.2.1 PREC-ROUNDING
+Choose precision and mode for calculation of times.
+10.2.1.1 PRECISION
+Setting of calculation precision. Only for net times!
+• <1s> calculated times in seconds
+• <1/10> calculated times in 1/10 seconds
+• <1/100> calculated times in 1/100 seconds
+• <1/1000> calculated times in 1/1 000 seconds
+• <1/10000> calculated times in 1/10 000 seconds
+10.2.1.2 ROUNDING
+All times are always calculated in day times in 1/10 000 seconds. For conversion to the runtime at the required precision one of the following three methods can be chosen:
+• <CUT> cuts off the figures not displayed
+• <UP> rounds up the last displayed figure
+• <ROUND> mathematical rounding of last displayed figure
+10.2.2 CHANGE HEAT
+Depending on the active program, this item enables moving on to the next heat.
+10.2.3 STN-AUTOMATIC
+The TIMY supports different types of automatic start number continuation for the competitors
+at the start and reaching the finish.
+10.2.3.1 START
+Controls the start number continuation for competitors at the start.
+• <MANUALLY> no automatic continuation
+• <UP> automatically counts up
+• <DOWN> automatically counts down
+10.2.3.2 FINISH
+Controls the start number continuation for competitors reaching the finish.
+• <MANUALLY> no automatic continuation
+• <START> only 1 competitor on track from start to finish
+• <FINISH> several competitors on track, according to starting order
+10.2.3.3 AUTOMATIC-TIME
+Set a minimum and maximum runtime. If an impulse is received before the minimum time
+has expired an invalid time is registered. If the maximum time has expired the finish start
+number is automatically forwarded to the next started competitor.
+• <AUTOTIME-MIN> Standard: 00:00:00 = function disabled
+• <AUTOTIME-MAX> Standard: 00:00:00 = function disabled
+10.2.4 SEC-MODE
+This function sets if runtime is dipslayed in min/sec or just sec. Not available in all programs
+• <NO> Runtime in hh:mm:ss.th
+• <YES> Runtime in ssss:th 
+TIMY General
+Page 18
+10.2.5 LANGUAGE
+You can adjust the following languages as defaults for the TIMY
+• <GERMAN>
+• <ENGLISH>
+• <FRENCH>
+• <ITALIAN>
+• <SPANISH>
+• <SCHWEDISH>
+10.2.6 STANDARD
+Reset the TIMY to the factory defaults.
+• <STANDARD-SETT>
+10.2.7 HARDWARE
+This menu is only available for our service technicians.
+10.2.8 PROGS ON OFF
+As standard all programs are activated. The programs that are not used can be hidden to
+reduce the select list. Can be unhidden any time.
+10.3 CHANNELS
+Configures the timing channels.
+10.3.1 INTERNAL
+10.3.1.1 DELAY
+The delay time of the internal timing channels c0, c1, c2, c3, c4, c5, c6, c7 and c8 can be set.
+(see point 5.2).
+• <DELAY START C0> standard is 1.00 second
+• <DELAY C1-C8> standard is 0.30 second
+• <DELAY C1>
+• <DELAY C2>
+• <DELAY C3>
+• <DELAY C4>
+• <DELAY C5>
+• <DELAY C6>
+• <DELAY C7<
+• <DELAY C8>
+10.3.1.2 TED-CORRECTION
+For automatic correction of each channel when impulses are transmitted with 0.1 seconds
+delay by the TED.
+10.3.1.3 EDGE
+Setting of triggering the impulses either on closing or opening. Standard for all channels is on
+closing. 
+TIMY General
+Page 19
+10.3.2 BEEP
+Switches the channel beep on or off.
+• <OFF>
+• <ON> Factory default
+10.3.3 TED-RX
+Activates the multichannel reception by the TED-RX.
+• <OFF> Factory default
+• <ON>
+ATTENTION! If this function is activated the serial interface of the TIMY is occupied by the
+TED.
+10.3.4 CHANNEL-PATTERN
+This menu is currently not avialable. Certain channels can be activated or deactivated.
+10.4 DISPLAY
+Setting for TIMY display and scoreboard.
+10.4.1 RUNNING TENTH
+In the display and via interface the running time is issued in 1/10. Function not available for
+all programs.
+• <OFF> Factory default
+• <ON>
+10.4.2 DELAYTIME 1
+The delaytime determines for how long the intermediate times are shown on display and
+scoreboard. The display time can be set e.g. for intermediate times of the running time in
+seconds. Moreover, this time is also applied for the automatic start number continuation at
+the finish.
+Factory default is 03 seconds.
+10.4.3 DELAYTIME 2
+Setting of display time for total time.
+Factory default is 03 seconds.
+10.5 INTERFACE
+Settings for the RS232 and scoreboard interface.
+Some settings are only available in certain programs.
+10.5.1 DISPLAYBOARD
+Settings for ALGE LED displays.
+• <CONTRAST> adjusts the brightness of the LED display
+• <TIME + DATE> internal time of scoreboard is synchronised
+• <DISPLAY MODE> without function
+• <BAUDRATE> standard is 2400, the baudrate of the TIMY and also of
+the scoreboard is set
+• <TIMEOUT> period after which the display weitches to time of day
+• <ADRESS> Address of the LED display board
+• <SAFETY CAR> display mode permanent or flashing
+• <LAPS> number of laps
+• <CTDÆLAP> manual or automatic
+TIMY General
+Page 20
+10.5.2 RS-232
+Settings of the RS232.
+• <MODE>
+• <BAUDRATE> standard is 9600
+• <SENDE MEMORY> sends the memory contents of the TIMY.
+• <HANDSHAKE>
+• <TRACK-MODE> Norm or ident: changes the output format in the program Tracktimer
+• <TIMY<->TIMY> communication between 2 TIMYs
+10.5.3 GSM-MODEM
+Setting of modem communication.
+• <ENTER NR> enter the number to dial
+• <SEARCH MODEM > search a connected modem
+• <PIN CODE> enter the SIM card pin code
+• <STOP GSM-MODEM> disconnect the connection
+• <MEMORY Æ SMS send the memory by SMS
+10.6 PRINTER
+Settings of the printer.
+10.6.1 PRINTER-MODE
+• < OFF>
+• < ON > Standard
+10.6.2 PRINT STARTTIME
+• < OFF> Standard
+• < ON >
+10.6.3 AUTO LINE FEED
+• <0> 0 is standard, enter 0 - 9
+10.6.4 START-LOGO
+• <OFF>
+• <ON> standard
+10.6.5 PRINT DAYTIME
+• <OFF>
+• <ON> standard
+10.7 PROGRAM
+Changes the active program.
+ATTENTION! When changing the program all saved times are deleted!
+10.8 Program Specific Settings
+Depending on active program these settings are different.
+10.9 KEYBOARD-LOCK
+Activates the keyboard lock to disable accidental entries. All internal keys of the TIMY are
+disabled. To enable the keyboard press 1 2 3 4 5 6. 
+TIMY General
+Page 21
+11 Technical data
+Processor: Siemens C161 with 3,3 V technology
+Time reference: 12.8 MHz TCXO
+Time resolution: 1/10 000 seconds
+Running precision: Temperature compensated quartz oszillator TCXO:
+temperature range -25 to 50 °C: +/- 2.5ppm (+/- 0.009 sec/h)
+at aging: max. +/- 1 ppm per year
+at 25°C, calibrated +/- 0.3 ppm
+Standard quartz:
+temperature range -25 to 50 °C: +/- 50ppm (+/- 0.18 sec/h)
+at aging: max. +/- 5 ppm per year
+at 25°C, calibrated +/- 0.85 ppm
+Program Memory: FLASH memory with 8 MBit
+Data Memory: RAM with 2 MBit, approx. 15 000 times
+Display: monochrome LCD graphic display 128 x 64 pixel, available with standard or extended temperature range
+Keypad: silicone keypad, 26 buttons
+Connections: DIN-plug for photocell (7)
+banana plug pair – start input (5)
+banana plug pair – finish input (6)
+banana plug pair – displayboard (4)
+D-sub-25 pin (3)
+• 9 timing channels
+• RS 232 (PC-connection)
+• displayboard
+• RS 485 (network)
+• power supply (8 - 15 VDC in / 7.5 - 14,5 VDC out)
+USB (1)
+power supply 8 - 15 V DC in (2)
+Channel extension: 5 channels per extension, max. 99 channels
+Power supply: Internal:
+NC-TIMY battery pack or
+6 x AA-Alkaline 2 Ah or
+6 x AA-NiCd 1 Ah or
+6 x AA-NiMH 1,5 Ah
+External:
+with charger PS12A, PS12 and 12 V battery or 8 -15 VDC
+Operating time: Alcaline: without printer approx. 50 hours
+NiCd: without printer approx. 25 hours
+NiMh: without printer approx. 38 hours
+NC-TIMY: without printer approx. 25 hours
+NC-TIMY: with printer approx. 3000 lines
+Charging: depending on rechargeable battery, up to max. 18 hours
+Printer: graphic thermal printer, max. 6 lines per second
+Temperature range: TIMY S and P: -5 to 60°C
+TIMY XE and PXE: -20 to 60°C
+Dimensions: TIMY S and XE: 204 x 91 x 50 mm
+TIMY P and PXE: 307 x 91 x 65 mm
+Weight: TIMY S and XE: 450 g (without battery)
+TIMY P and PXE: 650 g (without battery and paper) 
+TIMY General
+Page 22
+11.1 Pin assignment
+USB-Interface (1):
+The USB-interface is used as interface between TIMY and PC. Via this interface the TIMY
+can completely be controlled and all data can be called.
+Charger Connection (2):
+ALGE-Multiport (3):
+Pin assignment:
+1 ........ ........... terminal numbering connection
+2 ........ c0....... start channel (precision 1/10 000 s)
+3 ........ c2....... timing channel 2 (precision 1/10 000 s)
+4 ........ c3....... timing channel 3 (precision 1/10 000 s)
+5 ........ c7....... timing channel 7 (precision 1/100 s)
+6 ........ ........... data output for display board
+7 ........ ........... RS485B
+8 ........ ........... RS485A
+9 ........ ........... clock for terminals CLK
+10 ...... ........... RS232 TX
+11 ...... ........... RS232 RX
+12 ...... ........... common ground GND
+13 ...... ........... stabilized voltage out (+5V)
+14 ...... c1....... stop channel (precision 1/10 000 s)
+15 ...... c5....... timing channel 5 (precision 1/10 000 s)
+16 ...... c8....... timing channel 8 (precision 1/100 s)
+17 ...... c6....... timing channel 6 (precision 1/100 s)
+18 ...... c4....... timing channel 4 (precision 1/10 000 s)
+19 ...... ........... RS232 RTS
+20 ...... ........... printer data out
+21 ...... ........... horn output 8 Ω
+22 ...... ........... RS232 CTS
+23 ...... ........... output voltage 7,5 - 14,5 VDC
+24 ...... ........... common ground GND
+25 ...... ........... power supply in or out (8 - 15 VDC) 
+TIMY General
+Page 23
+Banana plugs for displayboard (4)
+Banana plugs for start channel C0 (5)
+Banana plugs for stop channel C1 (6)
+Photocell plug (7)
+Pin assignment:
+1 ........ c0....... start channel
+2 ........ c1....... stop channel
+3 ........ GND... common ground
+4 ........ +Ua ... power supply 8-15 VDC
+5 ........ +5V ... stabilized voltage out (+5 VDC)
+6 ........ c2....... intermediate time channel 
+TIMY General
+Page 24
+12 Interfaces
+12.1 RS232 Interface
+Output format: 1 start bit, 8 data bit, no parity bit, 1 stop bit
+Bit rate: 9 600 baud factory setting
+adjustable: 2400, 4800, 9600, 19200, 28800, 38400
+Transmisson protocol: ASCII
+yNNNNxCCCxHH:MM:SS.zhtqxGGRRRR(CR)
+y first sign is blank or info (see below)
+x blank
+NNNN start number, max. 4-digit, prezeros arel not shown
+CCC channels of timing device
+c0 channel 0 start channel
+c0M channel 0 triggered by keypad <START>
+c1 channel 1 finish channel
+c1M channel 1 triggered by keypad <STOP>
+c2 channel 2
+c3 channel 3
+c4 channel 4
+c5 channel 5
+c6 channel 6
+c7 channel 7
+c8 channel 8
+RT run time
+TT total time
+SQ sequential time (lap time)
+kmh speed measurement (possible displays: km/h, m/s, mph)
+HH:MM:SS.zhtq time in hours, minutes, seconds and 1/10 000 seconds
+GG group, lap or blank
+RRRR rank (only at classement available)
+(CR) carriage return
+Info – the following figures may be in first position:
+x blank
+? time without valid start number
+m time from memory
+c times deleted (e.g. with CLEAR button)
+C memory time deleted (e.g. with CLEAR button)
+d times deleted due to disqualification
+i manually entered time with <INPUT>
+n enter new start number
+Example of a RS 232 interface output (e.g. program backup)
+0001 c0 15:43:49,8863 00
+ 0002 c0 15:43:50,1647 00
+ 0005 c1 15:43:51,6464 00
+ 0006 c0 15:43:51,9669 00
+ 0007 c1 15:43:52,2467 00
+ 0008 c0 15:43:52,4579 00
+ 0009 c1 15:43:52,6941 00
+ 0015 c0M 15:43:55,6200 00
+ 0016 c1M 15:43:55,8800 00
+ 0019 c0M 15:43:57,020 00
+m0007 c0 15:43:59,9927 00
+m 0008 c1 15:44:00,2849 00
+m 0009 c0 15:44:00,5499 00
+m 0010 c1 15:44:00,8182 00
+m 0011 c0 15:44:01,0366 00
+C 0011 c0 15:44:01,0366 00
+n 0014 c0 15:44:01,0366 00
+ 0020 c0 15:44:15,0077 00
+ 0022 c0 15:44:15,5165 00
+ 0023 c1 15:44:15,7847 00
+c 0023 c1 15:44:15,7847 00
+i 0023 c1 15:44:15,7847 00
+TIMY General
+Page 25 
+TIMY General
+Page 26 
+TIMY General
+Page 27
+12.2 RS485 Interface
+This function is not available at the moment.
+12.3 Interface for displayboard
+Output format: 1 start-bit, 8 data-bit, no parity-bit, 1 stop-bit
+Bit rate: factory setting: 2.400 baud (neccessary for ALGE GAZ displayboard)
+2400, 4800, 9600, 19200, 28800, 38400
+Transmission protocol: ASCII
+ NNN.xxxxxxxxM:SSxxxx(CR) Running time (without 1/10 seconds)
+ NNN.xxxxHH:MM:SSxxxx(CR) Running time (without 1/10 seconds)
+ NNN.xxxxHH:MM:SS.zxx(CR) Running time (with 1/10 seconds)
+ NNNCxxxxHH:MM:SS.zhtRR(CR) Channel C1 finish time with rank
+ NNNCxxxxHH:MM:SS.zhtxx(CR) Channel C1 finish time without rank
+ NNNDxxxxHH:MM:SS.zhtRR(CR) Channel C1 total time with rank
+ NNNDxxxxHH:MM:SS.zhtxx(CR) Channel C1 total time without rank
+ NNNAxxxxHH:MM:SS.zhtRR(CR) Channel C2 1. intermediate time
+ NNNBxxxxHH:MM:SS.zhtRR(CR) Channel C3 2. intermediate time
+ NNNExxxxHH:MM:SS.zhtRR(CR) Channel C4 3. intermediate time
+ NNNFxxxxHH:MM:SS.zhtRR(CR) Channel C5 4. intermediate time
+ NNNGxxxxHH:MM:SS.zhtRR(CR) Channel C6 5. intermediate time
+ NNNHxxxxHH:MM:SS.zhtRR(CR) Channel C7 6. intermediate time
+ NNNIxxxxHH:MM:SS.zhtRR(CR) Channel C8 7. intermediate time
+ NNNSxxx©xxxxsxss.ssxRR(CR) Speed
+NNN Start number (hundreds, tens, ones - digit 1 to 3); a point on the fourth
+digit is the identification for a running time
+HH:MM:SS.zht time in hours, minutes, seconds, and 1/1000 seconds
+© speed measurement: output of following ASCII signs: 01 hex for km/h,
+02 hex for m/s, 03 hex for mph
+RR rank
+x blank
+(CR) carriage return
+13 USB Interface
+Currently avalable applications for USB interface:
+• update the TIMY software with installation manager or TIMY USB program
+• query and change of settings (as RS232)
+• recording of times with program ComtoFile
+• evaluation with program Time.NET
+• evaluation with program Excel Writer 
