@@ -121,6 +121,9 @@ namespace AlgeTimyUsb.SampleApplication
         {
             InitializeComponent();
 
+            // Set up custom drawing for the ListBox to show errors in red
+            listBox1.DrawMode = DrawMode.OwnerDrawFixed;
+            listBox1.DrawItem += ListBox1_DrawItem;
             listBox1.Click += new EventHandler(listBox1_Click);
 
             // Initialize timers
@@ -129,8 +132,37 @@ namespace AlgeTimyUsb.SampleApplication
             runningStatusTimer.Tick += RunningStatusTimer_Tick;
 
             healthCheckTimer = new System.Windows.Forms.Timer();
-            healthCheckTimer.Interval = 10000; // 10 seconds
+            healthCheckTimer.Interval = 30000; // 30 seconds
             healthCheckTimer.Tick += HealthCheckTimer_Tick;
+        }
+
+        private void ListBox1_DrawItem(object sender, DrawItemEventArgs e)
+        {
+            if (e.Index < 0) return;
+
+            var listBox = sender as ListBox;
+            if (listBox == null) return;
+
+            string text = listBox.Items[e.Index]?.ToString() ?? string.Empty;
+
+            // Draw background
+            e.DrawBackground();
+
+            // Determine text color based on content
+            Color textColor = e.ForeColor;
+            if (text.Contains("ERROR:") || text.Contains("disconnected") || text.Contains("Disconnect"))
+            {
+                textColor = Color.Red;
+            }
+
+            // Draw the text
+            using (var brush = new SolidBrush(textColor))
+            {
+                e.Graphics.DrawString(text, e.Font, brush, e.Bounds);
+            }
+
+            // Draw focus rectangle if needed
+            e.DrawFocusRectangle();
         }
 
         private void Form1_Load(object sender, EventArgs e)
@@ -239,21 +271,16 @@ namespace AlgeTimyUsb.SampleApplication
             {
                 try
                 {
-                    var contextTask = httpListener.GetContextAsync();
-                    using (var cts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken))
-                    {
-                        cts.CancelAfter(TimeSpan.FromSeconds(30));
-                        var context = await contextTask;
+                    var context = await httpListener.GetContextAsync();
 
-                        if (context.Request.IsWebSocketRequest && context.Request.Url.AbsolutePath == "/timy3")
-                        {
-                            _ = Task.Run(() => ProcessWebSocketRequestAsync(context), cancellationToken);
-                        }
-                        else
-                        {
-                            context.Response.StatusCode = 200;
-                            context.Response.Close();
-                        }
+                    if (context.Request.IsWebSocketRequest && context.Request.Url.AbsolutePath == "/timy3")
+                    {
+                        _ = Task.Run(() => ProcessWebSocketRequestAsync(context), cancellationToken);
+                    }
+                    else
+                    {
+                        context.Response.StatusCode = 200;
+                        context.Response.Close();
                     }
                 }
                 catch (Exception ex)
@@ -271,7 +298,10 @@ namespace AlgeTimyUsb.SampleApplication
             ClientConnection client = null;
             try
             {
-                var webSocketContext = await context.AcceptWebSocketAsync(null);
+                // Accept WebSocket with keep-alive settings
+                var webSocketContext = await context.AcceptWebSocketAsync(
+                    subProtocol: null,
+                    keepAliveInterval: TimeSpan.FromSeconds(30));
                 var webSocket = webSocketContext.WebSocket;
 
                 client = new ClientConnection(webSocket);
@@ -297,7 +327,7 @@ namespace AlgeTimyUsb.SampleApplication
             {
                 this.BeginInvoke(new Action(() =>
                 {
-                    AddLogLine($"Error processing WebSocket: {ex.Message}");
+                    AddLogLine($"ERROR: Processing WebSocket: {ex.Message}");
                 }));
             }
             finally
@@ -305,11 +335,22 @@ namespace AlgeTimyUsb.SampleApplication
                 if (client != null)
                 {
                     connectedClients.TryRemove(client.Id, out _);
+
+                    string disconnectReason = "Unknown";
+                    try
+                    {
+                        if (client.Socket?.CloseStatus.HasValue == true)
+                        {
+                            disconnectReason = $"{client.Socket.CloseStatus.Value}: {client.Socket.CloseStatusDescription ?? "No description"}";
+                        }
+                    }
+                    catch { }
+
                     client.Dispose();
 
                     this.BeginInvoke(new Action(() =>
                     {
-                        AddLogLine($"WebSocket client disconnected (ID: {client.Id})");
+                        AddLogLine($"ERROR: WebSocket client disconnected (ID: {client.Id}) - Reason: {disconnectReason}");
                     }));
                 }
             }
@@ -342,7 +383,7 @@ namespace AlgeTimyUsb.SampleApplication
                 {
                     using (var cts = CancellationTokenSource.CreateLinkedTokenSource(client.CancellationTokenSource.Token))
                     {
-                        cts.CancelAfter(TimeSpan.FromSeconds(30));
+                        cts.CancelAfter(TimeSpan.FromMinutes(5)); // 5 minute timeout for receives
 
                         var result = await client.Socket.ReceiveAsync(
                             new ArraySegment<byte>(buffer),
@@ -350,14 +391,45 @@ namespace AlgeTimyUsb.SampleApplication
 
                         if (result.MessageType == WebSocketMessageType.Close)
                         {
+                            AddLogLine($"ERROR: Client {client.Id} requested close: {result.CloseStatus} - {result.CloseStatusDescription}");
                             break;
+                        }
+
+                        // Handle ping/pong for keep-alive
+                        if (result.MessageType == WebSocketMessageType.Text)
+                        {
+                            var message = Encoding.UTF8.GetString(buffer, 0, result.Count);
+                            if (message == "ping")
+                            {
+                                // Respond with pong
+                                var pongBytes = Encoding.UTF8.GetBytes("pong");
+                                await client.Socket.SendAsync(
+                                    new ArraySegment<byte>(pongBytes),
+                                    WebSocketMessageType.Text,
+                                    true,
+                                    CancellationToken.None);
+                            }
                         }
 
                         client.LastActivity = DateTime.Now;
                     }
                 }
-                catch
+                catch (WebSocketException wsEx)
                 {
+                    AddLogLine($"ERROR: WebSocket exception for client {client.Id}: {wsEx.Message} (Code: {wsEx.WebSocketErrorCode})");
+                    break;
+                }
+                catch (OperationCanceledException)
+                {
+                    if (!client.CancellationTokenSource.Token.IsCancellationRequested)
+                    {
+                        AddLogLine($"ERROR: Client {client.Id} receive timeout");
+                    }
+                    break;
+                }
+                catch (Exception ex)
+                {
+                    AddLogLine($"ERROR: Unexpected error for client {client.Id}: {ex.Message}");
                     break;
                 }
             }
@@ -387,6 +459,7 @@ namespace AlgeTimyUsb.SampleApplication
                 if (connectedClients.TryRemove(id, out var client))
                 {
                     client.Dispose();
+                    AddLogLine($"ERROR: Removed disconnected client: {id}");
                 }
             }
 
@@ -396,11 +469,11 @@ namespace AlgeTimyUsb.SampleApplication
             }
         }
 
-        private void HealthCheckTimer_Tick(object sender, EventArgs e)
+        private async void HealthCheckTimer_Tick(object sender, EventArgs e)
         {
             var now = DateTime.Now;
             var staleClients = connectedClients
-                .Where(kvp => (now - kvp.Value.LastActivity).TotalMinutes > 5 ||
+                .Where(kvp => (now - kvp.Value.LastActivity).TotalHours > 3 ||  // 3 hours of inactivity
                              kvp.Value.Socket.State != WebSocketState.Open)
                 .Select(kvp => kvp.Key)
                 .ToList();
@@ -410,8 +483,32 @@ namespace AlgeTimyUsb.SampleApplication
                 if (connectedClients.TryRemove(id, out var client))
                 {
                     client.Dispose();
-                    AddLogLine($"Removed stale client: {id}");
+                    AddLogLine($"ERROR: Removed stale client after 3 hours of inactivity: {id}");
                 }
+            }
+
+            // Send keep-alive ping to active clients
+            var pingTasks = new List<Task>();
+            foreach (var kvp in connectedClients)
+            {
+                if (kvp.Value.Socket.State == WebSocketState.Open)
+                {
+                    var pingBytes = Encoding.UTF8.GetBytes("ping");
+                    pingTasks.Add(kvp.Value.Socket.SendAsync(
+                        new ArraySegment<byte>(pingBytes),
+                        WebSocketMessageType.Text,
+                        true,
+                        CancellationToken.None));
+                }
+            }
+
+            if (pingTasks.Count > 0)
+            {
+                try
+                {
+                    await Task.WhenAll(pingTasks);
+                }
+                catch { }
             }
 
             // Check Timy3 connection
