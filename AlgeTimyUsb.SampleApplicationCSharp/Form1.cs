@@ -391,6 +391,11 @@ namespace AlgeTimyUsb.SampleApplication
 
                 // Simple string-based detection without arrays
                 string cleanData = data.Replace(",", " ").Trim();
+                // Normalize multiple spaces to single spaces
+                while (cleanData.Contains("  "))
+                {
+                    cleanData = cleanData.Replace("  ", " ");
+                }
                 AddLogLine($"CLEAN DATA: {cleanData}");
 
                 // Check for start signal (contains "c0")
@@ -449,12 +454,25 @@ namespace AlgeTimyUsb.SampleApplication
                     string[] parts = cleanData.Split(new char[] { ' ' }, StringSplitOptions.RemoveEmptyEntries);
                     string timeValue = null;
 
-                    // First try old format: look for c1 and get the next part
+                    AddLogLine($"DEBUG: Split parts: [{string.Join(", ", parts)}]");
+
+                    // First try old format: look for c1 and get the next non-empty part
                     for (int i = 0; i < parts.Length; i++)
                     {
-                        if (parts[i].ToLower() == "c1" && i + 1 < parts.Length)
+                        if (parts[i].ToLower() == "c1")
                         {
-                            timeValue = parts[i + 1];
+                            AddLogLine($"DEBUG: Found c1 at position {i}");
+                            // Look for the next non-empty part that contains time pattern
+                            for (int j = i + 1; j < parts.Length; j++)
+                            {
+                                AddLogLine($"DEBUG: Checking part {j}: '{parts[j]}'");
+                                if (!string.IsNullOrEmpty(parts[j]) && parts[j].Contains(":") && parts[j].Contains("."))
+                                {
+                                    timeValue = parts[j];
+                                    AddLogLine($"DEBUG: Found time value: {timeValue}");
+                                    break;
+                                }
+                            }
                             break;
                         }
                     }
@@ -462,11 +480,14 @@ namespace AlgeTimyUsb.SampleApplication
                     // If old format didn't work, try new format: look for time pattern anywhere
                     if (string.IsNullOrEmpty(timeValue))
                     {
+                        AddLogLine("DEBUG: Old format failed, trying new format");
                         foreach (string part in parts)
                         {
+                            AddLogLine($"DEBUG: Checking part for time pattern: '{part}'");
                             if (part.Contains(":") && part.Contains("."))
                             {
                                 timeValue = part;
+                                AddLogLine($"DEBUG: Found time value in new format: {timeValue}");
                                 break;
                             }
                         }
