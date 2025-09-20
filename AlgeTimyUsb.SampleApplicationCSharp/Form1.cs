@@ -1,4 +1,5 @@
-﻿using System;
+using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Data;
@@ -15,36 +16,121 @@ namespace AlgeTimyUsb.SampleApplication
 {
     public partial class Form1 : Form
     {
-
-        Alge.TimyUsb timyUsb;
+        private Alge.TimyUsb timyUsb;
         private HttpListener httpListener;
         private CancellationTokenSource webSocketCancellation;
-        private List<WebSocket> connectedClients = new List<WebSocket>();
-        private object clientsLock = new object();
+        private readonly ConcurrentDictionary<Guid, ClientConnection> connectedClients = new ConcurrentDictionary<Guid, ClientConnection>();
         private DateTime? startTime;
         private string lastStartTimeString;
-        private string activeStartTimeString; // Stores the actual start time sent to WebSocket clients
-        private bool isRunning = false; // Tracks if timing is currently active
-        private System.Windows.Forms.Timer runningStatusTimer; // Timer for sending running status updates
-        private System.Windows.Forms.Timer cleanupTimer; // Timer for cleaning up disconnected clients
+        private string activeStartTimeString;
+        private bool isRunning = false;
+        private System.Windows.Forms.Timer runningStatusTimer;
+        private System.Windows.Forms.Timer healthCheckTimer;
+        private readonly SemaphoreSlim timy3SendSemaphore = new SemaphoreSlim(1, 1);
+
+        // Client connection wrapper for better state management
+        private class ClientConnection
+        {
+            public Guid Id { get; }
+            public WebSocket Socket { get; }
+            public CancellationTokenSource CancellationTokenSource { get; }
+            public DateTime LastActivity { get; set; }
+            private readonly SemaphoreSlim sendSemaphore = new SemaphoreSlim(1, 1);
+            private readonly ConcurrentQueue<string> messageQueue = new ConcurrentQueue<string>();
+            private bool isProcessing = false;
+
+            public ClientConnection(WebSocket socket)
+            {
+                Id = Guid.NewGuid();
+                Socket = socket;
+                CancellationTokenSource = new CancellationTokenSource();
+                LastActivity = DateTime.Now;
+            }
+
+            public async Task SendAsync(string message)
+            {
+                if (Socket.State != WebSocketState.Open)
+                    return;
+
+                messageQueue.Enqueue(message);
+                await ProcessQueueAsync();
+            }
+
+            private async Task ProcessQueueAsync()
+            {
+                if (isProcessing)
+                    return;
+
+                await sendSemaphore.WaitAsync();
+                try
+                {
+                    if (isProcessing)
+                        return;
+
+                    isProcessing = true;
+
+                    while (messageQueue.TryDequeue(out string message))
+                    {
+                        if (Socket.State != WebSocketState.Open)
+                            break;
+
+                        try
+                        {
+                            var messageBytes = Encoding.UTF8.GetBytes(message);
+                            var messageSegment = new ArraySegment<byte>(messageBytes);
+
+                            using (var cts = new CancellationTokenSource(TimeSpan.FromSeconds(5)))
+                            {
+                                await Socket.SendAsync(messageSegment, WebSocketMessageType.Text, true, cts.Token);
+                                LastActivity = DateTime.Now;
+                            }
+                        }
+                        catch (Exception)
+                        {
+                            // Failed to send, stop processing this client
+                            break;
+                        }
+                    }
+                }
+                finally
+                {
+                    isProcessing = false;
+                    sendSemaphore.Release();
+                }
+            }
+
+            public void Dispose()
+            {
+                try
+                {
+                    CancellationTokenSource?.Cancel();
+                    CancellationTokenSource?.Dispose();
+                    sendSemaphore?.Dispose();
+
+                    if (Socket?.State == WebSocketState.Open)
+                    {
+                        Socket.CloseAsync(WebSocketCloseStatus.NormalClosure, "Closing", CancellationToken.None).Wait(1000);
+                    }
+                    Socket?.Dispose();
+                }
+                catch { }
+            }
+        }
 
         public Form1()
         {
             InitializeComponent();
 
-            // Register the click event handler for the listbox
             listBox1.Click += new EventHandler(listBox1_Click);
 
-            // Initialize the running status timer
+            // Initialize timers
             runningStatusTimer = new System.Windows.Forms.Timer();
-            runningStatusTimer.Interval = 1000; // 1 second
+            runningStatusTimer.Interval = 1000;
             runningStatusTimer.Tick += RunningStatusTimer_Tick;
 
-            // Initialize the cleanup timer
-            cleanupTimer = new System.Windows.Forms.Timer();
-            cleanupTimer.Interval = 5000; // 5 seconds
-            cleanupTimer.Tick += CleanupTimer_Tick;
-            cleanupTimer.Start();
+            healthCheckTimer = new System.Windows.Forms.Timer();
+            healthCheckTimer.Interval = 10000; // 10 seconds
+            healthCheckTimer.Tick += HealthCheckTimer_Tick;
         }
 
         private void Form1_Load(object sender, EventArgs e)
@@ -54,70 +140,94 @@ namespace AlgeTimyUsb.SampleApplication
 
             try
             {
-                // Start WebSocket server in a separate task to avoid blocking UI
-                Task.Run(() => StartWebSocketServer());
+                // Start WebSocket server
+                Task.Run(() => StartWebSocketServerAsync());
 
-                // Initialize TimyUsb
-                timyUsb = new Alge.TimyUsb(this);
+                // Initialize and start TimyUsb with delay to ensure proper initialization
+                Task.Run(async () =>
+                {
+                    await Task.Delay(500);
+                    InitializeTimyUsb();
+                });
 
-                // Set up event handlers
-                timyUsb.DeviceConnected += new EventHandler<Alge.DeviceChangedEventArgs>(timyUsb_DeviceConnected);
-                timyUsb.DeviceDisconnected += new EventHandler<Alge.DeviceChangedEventArgs>(timyUsb_DeviceDisconnected);
-                timyUsb.LineReceived += new EventHandler<Alge.DataReceivedEventArgs>(timyUsb_LineReceived);
-                timyUsb.BytesReceived += timyUsb_BytesReceived;
-                timyUsb.RawReceived += new EventHandler<Alge.DataReceivedEventArgs>(timyUsb_RawReceived);
-                timyUsb.PnPDeviceAttached += new EventHandler(timyUsb_PnPDeviceAttached);
-                timyUsb.PnPDeviceDetached += new EventHandler(timyUsb_PnPDeviceDetached);
-
-                // Start TimyUsb
-                timyUsb.Start();
-                btnStart.Enabled = false;
-                btnStop.Enabled = true;
-
-                // Check for already connected devices with a small delay
-                this.BeginInvoke(new Action(() => {
-                    int connectedCount = timyUsb.ConnectedDevicesCount;
-                    if (connectedCount > 0)
-                    {
-                        AddLogLine("Found " + connectedCount + " device(s) already connected at startup");
-                        Send("PROG");
-                    }
-                    else
-                    {
-                        AddLogLine("No devices connected at startup");
-                    }
-                }));
-
+                healthCheckTimer.Start();
                 AddLogLine("Form loaded successfully");
             }
             catch (Exception ex)
             {
                 AddLogLine("Error in Form_Load: " + ex.Message);
-                AddLogLine("Stack trace: " + ex.StackTrace);
             }
         }
 
-        private void StartWebSocketServer()
+        private void InitializeTimyUsb()
+        {
+            try
+            {
+                this.BeginInvoke(new Action(() =>
+                {
+                    timyUsb = new Alge.TimyUsb(this);
+
+                    timyUsb.DeviceConnected += timyUsb_DeviceConnected;
+                    timyUsb.DeviceDisconnected += timyUsb_DeviceDisconnected;
+                    timyUsb.LineReceived += timyUsb_LineReceived;
+                    timyUsb.BytesReceived += timyUsb_BytesReceived;
+                    timyUsb.RawReceived += timyUsb_RawReceived;
+                    timyUsb.PnPDeviceAttached += timyUsb_PnPDeviceAttached;
+                    timyUsb.PnPDeviceDetached += timyUsb_PnPDeviceDetached;
+
+                    timyUsb.Start();
+                    btnStart.Enabled = false;
+                    btnStop.Enabled = true;
+
+                    // Check for connected devices
+                    Task.Run(async () =>
+                    {
+                        await Task.Delay(1000);
+                        this.BeginInvoke(new Action(() =>
+                        {
+                            int connectedCount = timyUsb.ConnectedDevicesCount;
+                            if (connectedCount > 0)
+                            {
+                                AddLogLine($"Found {connectedCount} device(s) connected");
+                                Send("PROG");
+                            }
+                            else
+                            {
+                                AddLogLine("No devices connected at startup");
+                            }
+                        }));
+                    });
+                }));
+            }
+            catch (Exception ex)
+            {
+                this.BeginInvoke(new Action(() =>
+                {
+                    AddLogLine("Error initializing TimyUsb: " + ex.Message);
+                }));
+            }
+        }
+
+        private async Task StartWebSocketServerAsync()
         {
             try
             {
                 webSocketCancellation = new CancellationTokenSource();
                 httpListener = new HttpListener();
-
-                // Only listen on localhost to reduce startup time and security issues
                 httpListener.Prefixes.Add("http://localhost:8087/");
-
                 httpListener.Start();
 
-                this.BeginInvoke(new Action(() => {
+                this.BeginInvoke(new Action(() =>
+                {
                     AddLogLine("WebSocket server started at ws://localhost:8087/timy3");
                 }));
 
-                AcceptWebSocketClientsAsync(webSocketCancellation.Token).ConfigureAwait(false);
+                await AcceptWebSocketClientsAsync(webSocketCancellation.Token);
             }
             catch (Exception ex)
             {
-                this.BeginInvoke(new Action(() => {
+                this.BeginInvoke(new Action(() =>
+                {
                     AddLogLine("Error starting WebSocket server: " + ex.Message);
                 }));
             }
@@ -125,248 +235,189 @@ namespace AlgeTimyUsb.SampleApplication
 
         private async Task AcceptWebSocketClientsAsync(CancellationToken cancellationToken)
         {
-            try
+            while (!cancellationToken.IsCancellationRequested)
             {
-                while (!cancellationToken.IsCancellationRequested)
+                try
                 {
-                    HttpListenerContext context = await httpListener.GetContextAsync();
+                    var contextTask = httpListener.GetContextAsync();
+                    using (var cts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken))
+                    {
+                        cts.CancelAfter(TimeSpan.FromSeconds(30));
+                        var context = await contextTask;
 
-                    if (context.Request.IsWebSocketRequest && context.Request.Url.AbsolutePath == "/timy3")
-                    {
-                        ProcessWebSocketRequest(context, cancellationToken);
-                    }
-                    else
-                    {
-                        // Return a simple HTML page for non-WebSocket requests
-                        using (var response = context.Response)
+                        if (context.Request.IsWebSocketRequest && context.Request.Url.AbsolutePath == "/timy3")
                         {
-                            response.StatusCode = 200;
-                            response.ContentType = "text/html";
-                            string responseString = "<html><body><h1>Timy3 WebSocket Server</h1><p>This is a WebSocket server endpoint. Connect to ws://localhost:8087/timy3</p></body></html>";
-                            byte[] buffer = Encoding.UTF8.GetBytes(responseString);
-                            response.ContentLength64 = buffer.Length;
-                            await response.OutputStream.WriteAsync(buffer, 0, buffer.Length);
+                            _ = Task.Run(() => ProcessWebSocketRequestAsync(context), cancellationToken);
+                        }
+                        else
+                        {
+                            context.Response.StatusCode = 200;
+                            context.Response.Close();
                         }
                     }
                 }
+                catch (Exception ex)
+                {
+                    if (!cancellationToken.IsCancellationRequested)
+                    {
+                        await Task.Delay(1000, cancellationToken);
+                    }
+                }
+            }
+        }
+
+        private async Task ProcessWebSocketRequestAsync(HttpListenerContext context)
+        {
+            ClientConnection client = null;
+            try
+            {
+                var webSocketContext = await context.AcceptWebSocketAsync(null);
+                var webSocket = webSocketContext.WebSocket;
+
+                client = new ClientConnection(webSocket);
+
+                if (!connectedClients.TryAdd(client.Id, client))
+                {
+                    client.Dispose();
+                    return;
+                }
+
+                this.BeginInvoke(new Action(() =>
+                {
+                    AddLogLine($"WebSocket client connected (ID: {client.Id})");
+                }));
+
+                // Send initial state to new client
+                await SendInitialStateToClient(client);
+
+                // Handle client messages
+                await HandleWebSocketClientAsync(client);
             }
             catch (Exception ex)
             {
-                if (!cancellationToken.IsCancellationRequested)
+                this.BeginInvoke(new Action(() =>
                 {
-                    this.BeginInvoke(new Action(() => {
-                        AddLogLine("WebSocket server error: " + ex.Message);
+                    AddLogLine($"Error processing WebSocket: {ex.Message}");
+                }));
+            }
+            finally
+            {
+                if (client != null)
+                {
+                    connectedClients.TryRemove(client.Id, out _);
+                    client.Dispose();
+
+                    this.BeginInvoke(new Action(() =>
+                    {
+                        AddLogLine($"WebSocket client disconnected (ID: {client.Id})");
                     }));
                 }
             }
         }
 
-        private async void ProcessWebSocketRequest(HttpListenerContext context, CancellationToken cancellationToken)
+        private async Task SendInitialStateToClient(ClientConnection client)
         {
             try
             {
-                HttpListenerWebSocketContext webSocketContext = await context.AcceptWebSocketAsync(null);
-                WebSocket webSocket = webSocketContext.WebSocket;
-
-                this.BeginInvoke(new Action(() => {
-                    AddLogLine("WebSocket client connected");
-                }));
-
-                lock (clientsLock)
+                if (!string.IsNullOrEmpty(activeStartTimeString))
                 {
-                    connectedClients.Add(webSocket);
+                    await client.SendAsync($"{{\"event\":\"start\",\"time\":\"{activeStartTimeString}\"}}");
                 }
 
-                // Send messages to new client sequentially to avoid concurrent SendAsync calls
-                _ = Task.Run(async () => {
-                    try
-                    {
-                        // If timing is active, send start signal to new client
-                        if (!string.IsNullOrEmpty(activeStartTimeString))
-                        {
-                            string startMessage = $"{{\"event\":\"start\",\"time\":\"{activeStartTimeString}\"}}";
-                            var startMessageBytes = Encoding.UTF8.GetBytes(startMessage);
-                            var startMessageSegment = new ArraySegment<byte>(startMessageBytes);
-                            await webSocket.SendAsync(startMessageSegment, WebSocketMessageType.Text, true, CancellationToken.None);
-
-                            this.BeginInvoke(new Action(() => {
-                                AddLogLine($"Sent active start signal to new client: {activeStartTimeString}");
-                            }));
-                        }
-
-                        // Send current running status to new client
-                        string runningMessage = $"{{\"event\":\"running\",\"value\":{(isRunning ? "true" : "false")}}}";
-                        var runningMessageBytes = Encoding.UTF8.GetBytes(runningMessage);
-                        var runningMessageSegment = new ArraySegment<byte>(runningMessageBytes);
-                        await webSocket.SendAsync(runningMessageSegment, WebSocketMessageType.Text, true, CancellationToken.None);
-                    }
-                    catch (Exception ex)
-                    {
-                        this.BeginInvoke(new Action(() => {
-                            AddLogLine($"Failed to send initial messages to new client: {ex.Message}");
-                        }));
-                    }
-                });
-
-                // Handle client in separate task
-                _ = HandleWebSocketClientAsync(webSocket, cancellationToken);
+                await client.SendAsync($"{{\"event\":\"running\",\"value\":{(isRunning ? "true" : "false")}}}");
             }
             catch (Exception ex)
             {
-                this.BeginInvoke(new Action(() => {
-                    AddLogLine("Error accepting WebSocket connection: " + ex.Message);
-                }));
+                AddLogLine($"Error sending initial state: {ex.Message}");
             }
         }
 
-        private async Task HandleWebSocketClientAsync(WebSocket webSocket, CancellationToken cancellationToken)
+        private async Task HandleWebSocketClientAsync(ClientConnection client)
         {
             var buffer = new byte[1024];
 
-            try
+            while (!client.CancellationTokenSource.Token.IsCancellationRequested)
             {
-                while (webSocket.State == WebSocketState.Open && !cancellationToken.IsCancellationRequested)
+                try
                 {
-                    WebSocketReceiveResult result = await webSocket.ReceiveAsync(
-                        new ArraySegment<byte>(buffer), cancellationToken);
+                    using (var cts = CancellationTokenSource.CreateLinkedTokenSource(client.CancellationTokenSource.Token))
+                    {
+                        cts.CancelAfter(TimeSpan.FromSeconds(30));
 
-                    if (result.MessageType == WebSocketMessageType.Close)
-                    {
-                        await webSocket.CloseAsync(
-                            WebSocketCloseStatus.NormalClosure,
-                            string.Empty,
-                            cancellationToken);
-                    }
-                    else if (result.MessageType == WebSocketMessageType.Text)
-                    {
-                        // We could handle client commands here if needed
+                        var result = await client.Socket.ReceiveAsync(
+                            new ArraySegment<byte>(buffer),
+                            cts.Token);
+
+                        if (result.MessageType == WebSocketMessageType.Close)
+                        {
+                            break;
+                        }
+
+                        client.LastActivity = DateTime.Now;
                     }
                 }
-            }
-            catch (Exception ex)
-            {
-                this.BeginInvoke(new Action(() => {
-                    AddLogLine("WebSocket client error: " + ex.Message);
-                }));
-            }
-            finally
-            {
-                lock (clientsLock)
+                catch
                 {
-                    connectedClients.Remove(webSocket);
+                    break;
                 }
-
-                if (webSocket.State != WebSocketState.Closed)
-                {
-                    try
-                    {
-                        await webSocket.CloseAsync(
-                            WebSocketCloseStatus.NormalClosure,
-                            "Connection closed",
-                            CancellationToken.None);
-                    }
-                    catch { }
-                }
-
-                this.BeginInvoke(new Action(() => {
-                    AddLogLine("WebSocket client disconnected");
-                }));
             }
         }
 
         private async Task BroadcastToWebSocketClientsAsync(string message)
         {
-            List<WebSocket> clientsCopy;
-            List<WebSocket> clientsToRemove = new List<WebSocket>();
+            var tasks = new List<Task>();
+            var clientsToRemove = new List<Guid>();
 
-            lock (clientsLock)
+            foreach (var kvp in connectedClients)
             {
-                clientsCopy = new List<WebSocket>(connectedClients);
+                var client = kvp.Value;
+
+                if (client.Socket.State != WebSocketState.Open)
+                {
+                    clientsToRemove.Add(kvp.Key);
+                    continue;
+                }
+
+                tasks.Add(client.SendAsync(message));
             }
 
-            if (clientsCopy.Count == 0)
-                return;
-
-            var messageBytes = Encoding.UTF8.GetBytes(message);
-            var messageSegment = new ArraySegment<byte>(messageBytes);
-
-            // Send to each client sequentially to avoid concurrent SendAsync calls
-            foreach (var client in clientsCopy)
+            // Remove disconnected clients
+            foreach (var id in clientsToRemove)
             {
-                try
+                if (connectedClients.TryRemove(id, out var client))
                 {
-                    // Double-check state before attempting to send
-                    if (client.State == WebSocketState.Open)
-                    {
-                        await SendToClientAsync(client, messageSegment);
-                    }
-                    else
-                    {
-                        // Mark client for removal if not open
-                        clientsToRemove.Add(client);
-                    }
-                }
-                catch (Exception ex)
-                {
-                    // Only log if it's not a state-related error to reduce noise
-                    if (!(ex is InvalidOperationException) && !(ex is WebSocketException) && !(ex is ObjectDisposedException))
-                    {
-                        this.BeginInvoke(new Action(() => {
-                            AddLogLine($"Failed to send to client: {ex.Message}");
-                        }));
-                    }
-                    // Mark client for removal if sending fails
-                    clientsToRemove.Add(client);
+                    client.Dispose();
                 }
             }
 
-            // Remove any failed clients
-            if (clientsToRemove.Count > 0)
+            if (tasks.Count > 0)
             {
-                lock (clientsLock)
-                {
-                    foreach (var client in clientsToRemove)
-                    {
-                        connectedClients.Remove(client);
-                    }
-                }
-
-                this.BeginInvoke(new Action(() => {
-                    AddLogLine($"Removed {clientsToRemove.Count} disconnected WebSocket clients");
-                }));
+                await Task.WhenAll(tasks);
             }
         }
 
-        private async Task SendToClientAsync(WebSocket client, ArraySegment<byte> messageSegment)
+        private void HealthCheckTimer_Tick(object sender, EventArgs e)
         {
-            try
-            {
-                // Check if WebSocket is in a valid state before sending
-                if (client.State != WebSocketState.Open)
-                {
-                    throw new InvalidOperationException($"WebSocket is in {client.State} state");
-                }
+            var now = DateTime.Now;
+            var staleClients = connectedClients
+                .Where(kvp => (now - kvp.Value.LastActivity).TotalMinutes > 5 ||
+                             kvp.Value.Socket.State != WebSocketState.Open)
+                .Select(kvp => kvp.Key)
+                .ToList();
 
-                await client.SendAsync(
-                    messageSegment,
-                    WebSocketMessageType.Text,
-                    true,
-                    CancellationToken.None);
-            }
-            catch (WebSocketException ex) when (ex.WebSocketErrorCode == WebSocketError.InvalidState)
+            foreach (var id in staleClients)
             {
-                // Client is in invalid state, will be removed
-                throw;
+                if (connectedClients.TryRemove(id, out var client))
+                {
+                    client.Dispose();
+                    AddLogLine($"Removed stale client: {id}");
+                }
             }
-            catch (ObjectDisposedException)
+
+            // Check Timy3 connection
+            if (timyUsb != null && timyUsb.ConnectedDevicesCount == 0)
             {
-                // Client has been disposed, will be removed
-                throw;
-            }
-            catch (InvalidOperationException)
-            {
-                // Client is not in Open state, will be removed
-                throw;
+                AddLogLine("Warning: No Timy3 devices connected");
             }
         }
 
@@ -376,7 +427,6 @@ namespace AlgeTimyUsb.SampleApplication
                 AddLogLine("Device " + e.Device.Id + " Bytes: " + e.Data.Length);
         }
 
-
         void timyUsb_PnPDeviceDetached(object sender, EventArgs e)
         {
             AddLogLine("Device detached");
@@ -385,6 +435,19 @@ namespace AlgeTimyUsb.SampleApplication
         void timyUsb_PnPDeviceAttached(object sender, EventArgs e)
         {
             AddLogLine("Device attached");
+
+            // Auto-reconnect logic
+            Task.Run(async () =>
+            {
+                await Task.Delay(1000);
+                this.BeginInvoke(new Action(() =>
+                {
+                    if (timyUsb.ConnectedDevicesCount > 0)
+                    {
+                        Send("PROG");
+                    }
+                }));
+            });
         }
 
         void timyUsb_RawReceived(object sender, Alge.DataReceivedEventArgs e)
@@ -395,10 +458,7 @@ namespace AlgeTimyUsb.SampleApplication
 
         void timyUsb_LineReceived(object sender, Alge.DataReceivedEventArgs e)
         {
-            // Log the raw signal with a special prefix to make it easier to identify
             AddLogLine("RAW SIGNAL: " + e.Data);
-
-            // Also log the standard format
             AddLogLine("Device " + e.Device.Id + " Line: " + e.Data);
 
             if (e.Data.StartsWith("PROG: "))
@@ -407,8 +467,8 @@ namespace AlgeTimyUsb.SampleApplication
             }
             else
             {
-                // Process timing data in a separate task to avoid blocking the main thread
-                Task.Run(() => ProcessTimingData(e.Data));
+                // Process timing data synchronously to maintain order
+                ProcessTimingData(e.Data);
             }
         }
 
@@ -416,153 +476,109 @@ namespace AlgeTimyUsb.SampleApplication
         {
             try
             {
-                AddLogLine($"PARSING: {data}");
-
-                if (string.IsNullOrEmpty(data))
-                {
-                    AddLogLine("EMPTY DATA - SKIPPING");
+                if (string.IsNullOrWhiteSpace(data))
                     return;
-                }
 
-                // Simple string-based detection without arrays
                 string cleanData = data.Replace(",", " ").Trim();
-                // Normalize multiple spaces to single spaces
                 while (cleanData.Contains("  "))
                 {
                     cleanData = cleanData.Replace("  ", " ");
                 }
+
                 AddLogLine($"CLEAN DATA: {cleanData}");
 
-                // Check for start signal (contains "c0")
+                // Check for start signal (c0)
                 if (cleanData.ToLower().Contains(" c0 "))
                 {
-                    AddLogLine("FOUND C0 - START SIGNAL");
-
-                    // Extract time value after "c0" for logging purposes
-                    string[] parts = cleanData.Split(new char[] { ' ' }, StringSplitOptions.RemoveEmptyEntries);
-                    string deviceTimeValue = null;
-
-                    // Find c0 and get the next part
-                    for (int i = 0; i < parts.Length; i++)
-                    {
-                        if (parts[i].ToLower() == "c0" && i + 1 < parts.Length)
-                        {
-                            deviceTimeValue = parts[i + 1];
-                            break;
-                        }
-                    }
-
-                    if (!string.IsNullOrEmpty(deviceTimeValue))
-                    {
-                        AddLogLine($"DEVICE START TIME: {deviceTimeValue}");
-
-                        lastStartTimeString = deviceTimeValue;
-                        startTime = DateTime.Now;
-                        isRunning = true; // Set running state to true
-
-                        // Use PC real time instead of device time for start signal
-                        string pcTimeString = startTime.Value.ToString("HH:mm:ss.fff");
-                        activeStartTimeString = pcTimeString; // Store the active start time
-                        string startMessage = $"{{\"event\":\"start\",\"time\":\"{pcTimeString}\"}}";
-                        Task.Run(() => BroadcastToWebSocketClientsAsync(startMessage));
-
-                        // Broadcast running status
-                        string runningMessage = $"{{\"event\":\"running\",\"value\":true}}";
-                        Task.Run(() => BroadcastToWebSocketClientsAsync(runningMessage));
-
-                        // Start the timer to send running status every second
-                        runningStatusTimer.Start();
-
-                        AddLogLine($"START SIGNAL SENT TO WEBSOCKET WITH PC TIME: {pcTimeString} (Device time was: {deviceTimeValue})");
-                    }
-                    else
-                    {
-                        AddLogLine("NO TIME VALUE FOUND FOR START");
-                    }
+                    ProcessStartSignal(cleanData);
                 }
-                // Check for finish signal (contains "c1")
-                else if (cleanData.ToLower().Contains("c1"))
+                // Check for finish signal (c1)
+                else if (cleanData.ToLower().Contains(" c1 ") || cleanData.ToLower().Contains("c1"))
                 {
-                    AddLogLine("FOUND C1 - FINISH SIGNAL");
-
-                    // Extract time value - support both old and new formats
-                    string[] parts = cleanData.Split(new char[] { ' ' }, StringSplitOptions.RemoveEmptyEntries);
-                    string timeValue = null;
-
-                    AddLogLine($"DEBUG: Split parts: [{string.Join(", ", parts)}]");
-
-                    // First try old format: look for c1 and get the next non-empty part
-                    for (int i = 0; i < parts.Length; i++)
-                    {
-                        if (parts[i].ToLower() == "c1")
-                        {
-                            AddLogLine($"DEBUG: Found c1 at position {i}");
-                            // Look for the next non-empty part that contains time pattern
-                            for (int j = i + 1; j < parts.Length; j++)
-                            {
-                                AddLogLine($"DEBUG: Checking part {j}: '{parts[j]}'");
-                                if (!string.IsNullOrEmpty(parts[j]) && parts[j].Contains(":") && parts[j].Contains("."))
-                                {
-                                    timeValue = parts[j];
-                                    AddLogLine($"DEBUG: Found time value: {timeValue}");
-                                    break;
-                                }
-                            }
-                            break;
-                        }
-                    }
-
-                    // If old format didn't work, try new format: look for time pattern anywhere
-                    if (string.IsNullOrEmpty(timeValue))
-                    {
-                        AddLogLine("DEBUG: Old format failed, trying new format");
-                        foreach (string part in parts)
-                        {
-                            AddLogLine($"DEBUG: Checking part for time pattern: '{part}'");
-                            if (part.Contains(":") && part.Contains("."))
-                            {
-                                timeValue = part;
-                                AddLogLine($"DEBUG: Found time value in new format: {timeValue}");
-                                break;
-                            }
-                        }
-                    }
-
-                    if (!string.IsNullOrEmpty(timeValue))
-                    {
-                        AddLogLine($"FINISH TIME: {timeValue}");
-
-                        // Send to WebSocket
-                        string finishMessage = $"{{\"event\":\"finish\",\"time\":\"{timeValue}\"}}";
-                        Task.Run(() => BroadcastToWebSocketClientsAsync(finishMessage));
-
-                        AddLogLine("FINISH SIGNAL SENT TO WEBSOCKET");
-
-                        // Reset start time and clear active start time
-                        startTime = null;
-                        activeStartTimeString = null;
-                        isRunning = false; // Set running state to false
-
-                        // Stop the running status timer
-                        runningStatusTimer.Stop();
-
-                        // Broadcast running status
-                        string runningMessage = $"{{\"event\":\"running\",\"value\":false}}";
-                        Task.Run(() => BroadcastToWebSocketClientsAsync(runningMessage));
-                    }
-                    else
-                    {
-                        AddLogLine("NO TIME VALUE FOUND FOR FINISH");
-                    }
-                }
-                else
-                {
-                    AddLogLine("NO C0 OR C1 FOUND - IGNORING SIGNAL");
+                    ProcessFinishSignal(cleanData);
                 }
             }
             catch (Exception ex)
             {
                 AddLogLine($"ERROR IN PROCESS TIMING: {ex.Message}");
+            }
+        }
+
+        private void ProcessStartSignal(string cleanData)
+        {
+            AddLogLine("FOUND C0 - START SIGNAL");
+
+            string[] parts = cleanData.Split(new[] { ' ' }, StringSplitOptions.RemoveEmptyEntries);
+            string deviceTimeValue = null;
+
+            for (int i = 0; i < parts.Length - 1; i++)
+            {
+                if (parts[i].ToLower() == "c0")
+                {
+                    deviceTimeValue = parts[i + 1];
+                    break;
+                }
+            }
+
+            if (!string.IsNullOrEmpty(deviceTimeValue))
+            {
+                AddLogLine($"DEVICE START TIME: {deviceTimeValue}");
+
+                lastStartTimeString = deviceTimeValue;
+                startTime = DateTime.Now;
+                isRunning = true;
+
+                string pcTimeString = startTime.Value.ToString("HH:mm:ss.fff");
+                activeStartTimeString = pcTimeString;
+
+                // Broadcast start signal
+                Task.Run(async () =>
+                {
+                    await BroadcastToWebSocketClientsAsync($"{{\"event\":\"start\",\"time\":\"{pcTimeString}\"}}");
+                    await BroadcastToWebSocketClientsAsync($"{{\"event\":\"running\",\"value\":true}}");
+                });
+
+                runningStatusTimer.Start();
+
+                AddLogLine($"START SIGNAL SENT (PC Time: {pcTimeString}, Device: {deviceTimeValue})");
+            }
+        }
+
+        private void ProcessFinishSignal(string cleanData)
+        {
+            AddLogLine("FOUND C1 - FINISH SIGNAL");
+
+            string[] parts = cleanData.Split(new[] { ' ' }, StringSplitOptions.RemoveEmptyEntries);
+            string timeValue = null;
+
+            // Find time value (format HH:mm:ss.fff)
+            foreach (string part in parts)
+            {
+                if (part.Contains(":") && part.Contains("."))
+                {
+                    timeValue = part;
+                    break;
+                }
+            }
+
+            if (!string.IsNullOrEmpty(timeValue))
+            {
+                AddLogLine($"FINISH TIME: {timeValue}");
+
+                // Broadcast finish signal
+                Task.Run(async () =>
+                {
+                    await BroadcastToWebSocketClientsAsync($"{{\"event\":\"finish\",\"time\":\"{timeValue}\"}}");
+                    await BroadcastToWebSocketClientsAsync($"{{\"event\":\"running\",\"value\":false}}");
+                });
+
+                // Reset state
+                startTime = null;
+                activeStartTimeString = null;
+                isRunning = false;
+                runningStatusTimer.Stop();
+
+                AddLogLine("FINISH SIGNAL SENT");
             }
         }
 
@@ -574,67 +590,69 @@ namespace AlgeTimyUsb.SampleApplication
 
         void timyUsb_DeviceDisconnected(object sender, Alge.DeviceChangedEventArgs e)
         {
-            AddLogLine("Device " + e.Device.Id + " disconnected, " + timyUsb.ConnectedDevicesCount + " total connected");
+            AddLogLine($"Device {e.Device.Id} disconnected, {timyUsb.ConnectedDevicesCount} total connected");
         }
 
         void timyUsb_DeviceConnected(object sender, Alge.DeviceChangedEventArgs e)
         {
-            AddLogLine("Device " + e.Device.Id + " connected, " + timyUsb.ConnectedDevicesCount + " total connected");
+            AddLogLine($"Device {e.Device.Id} connected, {timyUsb.ConnectedDevicesCount} total connected");
         }
 
         void AddLogLine(String str)
         {
             if (InvokeRequired)
-                Invoke(new Action(() => { AddLogLine(str); }));
+            {
+                BeginInvoke(new Action(() => AddLogLine(str)));
+            }
             else
-                listBox1.Items.Insert(0, str);
+            {
+                listBox1.Items.Insert(0, $"[{DateTime.Now:HH:mm:ss.fff}] {str}");
+
+                // Keep log size manageable
+                while (listBox1.Items.Count > 1000)
+                {
+                    listBox1.Items.RemoveAt(listBox1.Items.Count - 1);
+                }
+            }
         }
 
         private void Form1_FormClosing(object sender, FormClosingEventArgs e)
         {
+            // Stop timers
+            runningStatusTimer?.Stop();
+            runningStatusTimer?.Dispose();
+
+            healthCheckTimer?.Stop();
+            healthCheckTimer?.Dispose();
+
             // Stop WebSocket server
-            if (webSocketCancellation != null)
-            {
-                webSocketCancellation.Cancel();
-                httpListener?.Stop();
+            webSocketCancellation?.Cancel();
 
-                // Close all WebSocket connections
-                lock (clientsLock)
-                {
-                    foreach (var client in connectedClients)
-                    {
-                        try
-                        {
-                            if (client.State == WebSocketState.Open)
-                                client.CloseAsync(WebSocketCloseStatus.NormalClosure, "Server shutting down", CancellationToken.None).Wait(1000);
-                        }
-                        catch { }
-                    }
-                    connectedClients.Clear();
-                }
+            // Close all clients
+            foreach (var kvp in connectedClients)
+            {
+                kvp.Value.Dispose();
+            }
+            connectedClients.Clear();
+
+            httpListener?.Stop();
+            httpListener?.Close();
+
+            // Stop TimyUsb
+            if (timyUsb != null)
+            {
+                timyUsb.DeviceConnected -= timyUsb_DeviceConnected;
+                timyUsb.DeviceDisconnected -= timyUsb_DeviceDisconnected;
+                timyUsb.LineReceived -= timyUsb_LineReceived;
+                timyUsb.BytesReceived -= timyUsb_BytesReceived;
+                timyUsb.RawReceived -= timyUsb_RawReceived;
+                timyUsb.PnPDeviceAttached -= timyUsb_PnPDeviceAttached;
+                timyUsb.PnPDeviceDetached -= timyUsb_PnPDeviceDetached;
+
+                timyUsb.Stop();
             }
 
-            // Unregister TimyUsb event handlers
-            timyUsb.DeviceConnected -= new EventHandler<Alge.DeviceChangedEventArgs>(timyUsb_DeviceConnected);
-            timyUsb.DeviceDisconnected -= new EventHandler<Alge.DeviceChangedEventArgs>(timyUsb_DeviceDisconnected);
-            timyUsb.LineReceived -= new EventHandler<Alge.DataReceivedEventArgs>(timyUsb_LineReceived);
-            timyUsb.BytesReceived -= timyUsb_BytesReceived;
-            timyUsb.RawReceived -= new EventHandler<Alge.DataReceivedEventArgs>(timyUsb_RawReceived);
-            timyUsb.PnPDeviceAttached -= new EventHandler(timyUsb_PnPDeviceAttached);
-            timyUsb.PnPDeviceDetached -= new EventHandler(timyUsb_PnPDeviceDetached);
-
-            // Stop and dispose the timers
-            if (runningStatusTimer != null)
-            {
-                runningStatusTimer.Stop();
-                runningStatusTimer.Dispose();
-            }
-
-            if (cleanupTimer != null)
-            {
-                cleanupTimer.Stop();
-                cleanupTimer.Dispose();
-            }
+            timy3SendSemaphore?.Dispose();
         }
 
         private void button1_Click(object sender, EventArgs e)
@@ -648,22 +666,29 @@ namespace AlgeTimyUsb.SampleApplication
                 Send(txtCommand.Text);
         }
 
-        private void Send(string command)
+        private async void Send(string command)
         {
-            timyUsb.Send(command + "\r");
-
+            try
+            {
+                await timy3SendSemaphore.WaitAsync();
+                timyUsb?.Send(command + "\r");
+            }
+            finally
+            {
+                timy3SendSemaphore.Release();
+            }
         }
 
         private void button2_Click(object sender, EventArgs e)
         {
-            timyUsb.Start();
+            timyUsb?.Start();
             btnStart.Enabled = false;
             btnStop.Enabled = true;
         }
 
         private void button3_Click(object sender, EventArgs e)
         {
-            timyUsb.Stop();
+            timyUsb?.Stop();
             btnStart.Enabled = true;
             btnStop.Enabled = false;
         }
@@ -676,21 +701,31 @@ namespace AlgeTimyUsb.SampleApplication
         private void txtBytes_KeyUp(object sender, KeyEventArgs e)
         {
             if (e.KeyCode == Keys.Enter)
-                SendBytes(txtCommand.Text);
+                SendBytes(txtBytes.Text);
         }
 
-        private void SendBytes(string p)
+        private async void SendBytes(string p)
         {
             var bytes = new List<Byte>();
 
-            foreach (var str in txtBytes.Text.Split(new String[] { ",", " ", "\t", "-" }, StringSplitOptions.RemoveEmptyEntries))
+            foreach (var str in p.Split(new[] { ",", " ", "\t", "-" }, StringSplitOptions.RemoveEmptyEntries))
             {
-                byte b = 0;
-                if (byte.TryParse(str, System.Globalization.NumberStyles.HexNumber, null, out b))
+                if (byte.TryParse(str, System.Globalization.NumberStyles.HexNumber, null, out byte b))
                     bytes.Add(b);
             }
 
-            timyUsb.Send(bytes.ToArray());
+            if (bytes.Count > 0)
+            {
+                try
+                {
+                    await timy3SendSemaphore.WaitAsync();
+                    timyUsb?.Send(bytes.ToArray());
+                }
+                finally
+                {
+                    timy3SendSemaphore.Release();
+                }
+            }
         }
 
         private void listBox1_DoubleClick(object sender, EventArgs e)
@@ -700,7 +735,6 @@ namespace AlgeTimyUsb.SampleApplication
                 Clipboard.SetText(str.ToString());
         }
 
-        // Add a single-click handler to copy to clipboard
         private void listBox1_Click(object sender, EventArgs e)
         {
             var str = listBox1.SelectedItem;
@@ -710,49 +744,17 @@ namespace AlgeTimyUsb.SampleApplication
             }
         }
 
-        // Timer tick event handler for sending running status updates
         private void RunningStatusTimer_Tick(object sender, EventArgs e)
         {
             if (isRunning)
             {
-                string runningMessage = $"{{\"event\":\"running\",\"value\":true}}";
-                Task.Run(() => BroadcastToWebSocketClientsAsync(runningMessage));
+                Task.Run(() => BroadcastToWebSocketClientsAsync($"{{\"event\":\"running\",\"value\":true}}"));
             }
         }
 
-        // Clear log button click event handler
         private void btnClearLog_Click(object sender, EventArgs e)
         {
             listBox1.Items.Clear();
         }
-
-        // Cleanup timer tick event handler for removing disconnected clients
-        private void CleanupTimer_Tick(object sender, EventArgs e)
-        {
-            List<WebSocket> clientsToRemove = new List<WebSocket>();
-
-            lock (clientsLock)
-            {
-                foreach (var client in connectedClients)
-                {
-                    if (client.State != WebSocketState.Open)
-                    {
-                        clientsToRemove.Add(client);
-                    }
-                }
-
-                foreach (var client in clientsToRemove)
-                {
-                    connectedClients.Remove(client);
-                }
-            }
-
-            if (clientsToRemove.Count > 0)
-            {
-                AddLogLine($"Cleaned up {clientsToRemove.Count} disconnected WebSocket clients");
-            }
-        }
-
-
     }
 }
