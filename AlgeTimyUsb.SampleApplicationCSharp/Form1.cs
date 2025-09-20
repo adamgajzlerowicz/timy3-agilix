@@ -26,6 +26,7 @@ namespace AlgeTimyUsb.SampleApplication
         private string activeStartTimeString; // Stores the actual start time sent to WebSocket clients
         private bool isRunning = false; // Tracks if timing is currently active
         private System.Windows.Forms.Timer runningStatusTimer; // Timer for sending running status updates
+        private System.Windows.Forms.Timer cleanupTimer; // Timer for cleaning up disconnected clients
 
         public Form1()
         {
@@ -38,6 +39,12 @@ namespace AlgeTimyUsb.SampleApplication
             runningStatusTimer = new System.Windows.Forms.Timer();
             runningStatusTimer.Interval = 1000; // 1 second
             runningStatusTimer.Tick += RunningStatusTimer_Tick;
+
+            // Initialize the cleanup timer
+            cleanupTimer = new System.Windows.Forms.Timer();
+            cleanupTimer.Interval = 5000; // 5 seconds
+            cleanupTimer.Tick += CleanupTimer_Tick;
+            cleanupTimer.Start();
         }
 
         private void Form1_Load(object sender, EventArgs e)
@@ -170,43 +177,33 @@ namespace AlgeTimyUsb.SampleApplication
                     connectedClients.Add(webSocket);
                 }
 
-                // If timing is active, send start signal to new client
-                if (!string.IsNullOrEmpty(activeStartTimeString))
-                {
-                    string startMessage = $"{{\"event\":\"start\",\"time\":\"{activeStartTimeString}\"}}";
-                    _ = Task.Run(async () => {
-                        try
+                // Send messages to new client sequentially to avoid concurrent SendAsync calls
+                _ = Task.Run(async () => {
+                    try
+                    {
+                        // If timing is active, send start signal to new client
+                        if (!string.IsNullOrEmpty(activeStartTimeString))
                         {
-                            var messageBytes = Encoding.UTF8.GetBytes(startMessage);
-                            var messageSegment = new ArraySegment<byte>(messageBytes);
-                            await webSocket.SendAsync(messageSegment, WebSocketMessageType.Text, true, CancellationToken.None);
+                            string startMessage = $"{{\"event\":\"start\",\"time\":\"{activeStartTimeString}\"}}";
+                            var startMessageBytes = Encoding.UTF8.GetBytes(startMessage);
+                            var startMessageSegment = new ArraySegment<byte>(startMessageBytes);
+                            await webSocket.SendAsync(startMessageSegment, WebSocketMessageType.Text, true, CancellationToken.None);
 
                             this.BeginInvoke(new Action(() => {
                                 AddLogLine($"Sent active start signal to new client: {activeStartTimeString}");
                             }));
                         }
-                        catch (Exception ex)
-                        {
-                            this.BeginInvoke(new Action(() => {
-                                AddLogLine($"Failed to send start signal to new client: {ex.Message}");
-                            }));
-                        }
-                    });
-                }
 
-                // Send current running status to new client
-                string runningMessage = $"{{\"event\":\"running\",\"value\":{(isRunning ? "true" : "false")}}}";
-                _ = Task.Run(async () => {
-                    try
-                    {
-                        var messageBytes = Encoding.UTF8.GetBytes(runningMessage);
-                        var messageSegment = new ArraySegment<byte>(messageBytes);
-                        await webSocket.SendAsync(messageSegment, WebSocketMessageType.Text, true, CancellationToken.None);
+                        // Send current running status to new client
+                        string runningMessage = $"{{\"event\":\"running\",\"value\":{(isRunning ? "true" : "false")}}}";
+                        var runningMessageBytes = Encoding.UTF8.GetBytes(runningMessage);
+                        var runningMessageSegment = new ArraySegment<byte>(runningMessageBytes);
+                        await webSocket.SendAsync(runningMessageSegment, WebSocketMessageType.Text, true, CancellationToken.None);
                     }
                     catch (Exception ex)
                     {
                         this.BeginInvoke(new Action(() => {
-                            AddLogLine($"Failed to send running status to new client: {ex.Message}");
+                            AddLogLine($"Failed to send initial messages to new client: {ex.Message}");
                         }));
                     }
                 });
@@ -293,27 +290,32 @@ namespace AlgeTimyUsb.SampleApplication
             var messageBytes = Encoding.UTF8.GetBytes(message);
             var messageSegment = new ArraySegment<byte>(messageBytes);
 
+            // Send to each client sequentially to avoid concurrent SendAsync calls
             foreach (var client in clientsCopy)
             {
-                if (client.State == WebSocketState.Open)
+                try
                 {
-                    try
+                    // Double-check state before attempting to send
+                    if (client.State == WebSocketState.Open)
                     {
-                        await client.SendAsync(
-                            messageSegment,
-                            WebSocketMessageType.Text,
-                            true,
-                            CancellationToken.None);
+                        await SendToClientAsync(client, messageSegment);
                     }
-                    catch (Exception)
+                    else
                     {
-                        // Mark client for removal if sending fails
+                        // Mark client for removal if not open
                         clientsToRemove.Add(client);
                     }
                 }
-                else
+                catch (Exception ex)
                 {
-                    // Mark client for removal if not open
+                    // Only log if it's not a state-related error to reduce noise
+                    if (!(ex is InvalidOperationException) && !(ex is WebSocketException) && !(ex is ObjectDisposedException))
+                    {
+                        this.BeginInvoke(new Action(() => {
+                            AddLogLine($"Failed to send to client: {ex.Message}");
+                        }));
+                    }
+                    // Mark client for removal if sending fails
                     clientsToRemove.Add(client);
                 }
             }
@@ -332,6 +334,39 @@ namespace AlgeTimyUsb.SampleApplication
                 this.BeginInvoke(new Action(() => {
                     AddLogLine($"Removed {clientsToRemove.Count} disconnected WebSocket clients");
                 }));
+            }
+        }
+
+        private async Task SendToClientAsync(WebSocket client, ArraySegment<byte> messageSegment)
+        {
+            try
+            {
+                // Check if WebSocket is in a valid state before sending
+                if (client.State != WebSocketState.Open)
+                {
+                    throw new InvalidOperationException($"WebSocket is in {client.State} state");
+                }
+
+                await client.SendAsync(
+                    messageSegment,
+                    WebSocketMessageType.Text,
+                    true,
+                    CancellationToken.None);
+            }
+            catch (WebSocketException ex) when (ex.WebSocketErrorCode == WebSocketError.InvalidState)
+            {
+                // Client is in invalid state, will be removed
+                throw;
+            }
+            catch (ObjectDisposedException)
+            {
+                // Client has been disposed, will be removed
+                throw;
+            }
+            catch (InvalidOperationException)
+            {
+                // Client is not in Open state, will be removed
+                throw;
             }
         }
 
@@ -588,11 +623,17 @@ namespace AlgeTimyUsb.SampleApplication
             timyUsb.PnPDeviceAttached -= new EventHandler(timyUsb_PnPDeviceAttached);
             timyUsb.PnPDeviceDetached -= new EventHandler(timyUsb_PnPDeviceDetached);
 
-            // Stop and dispose the timer
+            // Stop and dispose the timers
             if (runningStatusTimer != null)
             {
                 runningStatusTimer.Stop();
                 runningStatusTimer.Dispose();
+            }
+
+            if (cleanupTimer != null)
+            {
+                cleanupTimer.Stop();
+                cleanupTimer.Dispose();
             }
         }
 
@@ -683,6 +724,33 @@ namespace AlgeTimyUsb.SampleApplication
         private void btnClearLog_Click(object sender, EventArgs e)
         {
             listBox1.Items.Clear();
+        }
+
+        // Cleanup timer tick event handler for removing disconnected clients
+        private void CleanupTimer_Tick(object sender, EventArgs e)
+        {
+            List<WebSocket> clientsToRemove = new List<WebSocket>();
+
+            lock (clientsLock)
+            {
+                foreach (var client in connectedClients)
+                {
+                    if (client.State != WebSocketState.Open)
+                    {
+                        clientsToRemove.Add(client);
+                    }
+                }
+
+                foreach (var client in clientsToRemove)
+                {
+                    connectedClients.Remove(client);
+                }
+            }
+
+            if (clientsToRemove.Count > 0)
+            {
+                AddLogLine($"Cleaned up {clientsToRemove.Count} disconnected WebSocket clients");
+            }
         }
 
 
