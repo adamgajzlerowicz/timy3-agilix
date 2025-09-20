@@ -441,21 +441,34 @@ namespace AlgeTimyUsb.SampleApplication
                     }
                 }
                 // Check for finish signal (contains "c1")
-                else if (cleanData.ToLower().Contains(" c1 "))
+                else if (cleanData.ToLower().Contains("c1"))
                 {
                     AddLogLine("FOUND C1 - FINISH SIGNAL");
 
-                    // Extract time value after "c1"
+                    // Extract time value - support both old and new formats
                     string[] parts = cleanData.Split(new char[] { ' ' }, StringSplitOptions.RemoveEmptyEntries);
                     string timeValue = null;
 
-                    // Find c1 and get the next part
+                    // First try old format: look for c1 and get the next part
                     for (int i = 0; i < parts.Length; i++)
                     {
                         if (parts[i].ToLower() == "c1" && i + 1 < parts.Length)
                         {
                             timeValue = parts[i + 1];
                             break;
+                        }
+                    }
+
+                    // If old format didn't work, try new format: look for time pattern anywhere
+                    if (string.IsNullOrEmpty(timeValue))
+                    {
+                        foreach (string part in parts)
+                        {
+                            if (part.Contains(":") && part.Contains("."))
+                            {
+                                timeValue = part;
+                                break;
+                            }
                         }
                     }
 
