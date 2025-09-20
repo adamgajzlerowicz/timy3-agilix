@@ -25,7 +25,7 @@ namespace AlgeTimyUsb.SampleApplication
         private string lastStartTimeString;
         private string activeStartTimeString; // Stores the actual start time sent to WebSocket clients
         private bool isRunning = false; // Tracks if timing is currently active
-        private Timer runningStatusTimer; // Timer for sending running status updates
+        private System.Windows.Forms.Timer runningStatusTimer; // Timer for sending running status updates
 
         public Form1()
         {
@@ -35,7 +35,7 @@ namespace AlgeTimyUsb.SampleApplication
             listBox1.Click += new EventHandler(listBox1_Click);
 
             // Initialize the running status timer
-            runningStatusTimer = new Timer();
+            runningStatusTimer = new System.Windows.Forms.Timer();
             runningStatusTimer.Interval = 1000; // 1 second
             runningStatusTimer.Tick += RunningStatusTimer_Tick;
         }
@@ -61,7 +61,6 @@ namespace AlgeTimyUsb.SampleApplication
                 timyUsb.RawReceived += new EventHandler<Alge.DataReceivedEventArgs>(timyUsb_RawReceived);
                 timyUsb.PnPDeviceAttached += new EventHandler(timyUsb_PnPDeviceAttached);
                 timyUsb.PnPDeviceDetached += new EventHandler(timyUsb_PnPDeviceDetached);
-                timyUsb.HeartbeatReceived += new EventHandler<Alge.HeartbeatReceivedEventArgs>(timyUsb_HeartbeatReceived);
 
                 // Start TimyUsb
                 timyUsb.Start();
@@ -342,11 +341,6 @@ namespace AlgeTimyUsb.SampleApplication
                 AddLogLine("Device " + e.Device.Id + " Bytes: " + e.Data.Length);
         }
 
-        void timyUsb_HeartbeatReceived(object sender, Alge.HeartbeatReceivedEventArgs e)
-        {
-            if (chkHeartbeat.Checked)
-                AddLogLine("Heartbeat: " + e.Time.ToString());
-        }
 
         void timyUsb_PnPDeviceDetached(object sender, EventArgs e)
         {
@@ -360,7 +354,7 @@ namespace AlgeTimyUsb.SampleApplication
 
         void timyUsb_RawReceived(object sender, Alge.DataReceivedEventArgs e)
         {
-            if ((!e.Data.StartsWith("TIMY:") || chkHeartbeat.Checked) && chkRaw.Checked)
+            if (chkRaw.Checked)
                 AddLogLine("Device " + e.Device.Id + " Raw: " + e.Data);
         }
 
@@ -559,7 +553,6 @@ namespace AlgeTimyUsb.SampleApplication
             timyUsb.RawReceived -= new EventHandler<Alge.DataReceivedEventArgs>(timyUsb_RawReceived);
             timyUsb.PnPDeviceAttached -= new EventHandler(timyUsb_PnPDeviceAttached);
             timyUsb.PnPDeviceDetached -= new EventHandler(timyUsb_PnPDeviceDetached);
-            timyUsb.HeartbeatReceived -= new EventHandler<Alge.HeartbeatReceivedEventArgs>(timyUsb_HeartbeatReceived);
 
             // Stop and dispose the timer
             if (runningStatusTimer != null)
@@ -639,8 +632,6 @@ namespace AlgeTimyUsb.SampleApplication
             if (str != null)
             {
                 Clipboard.SetText(str.ToString());
-                // Briefly highlight the item to indicate it was copied
-                AddLogLine("Copied to clipboard: " + str.ToString());
             }
         }
 
@@ -652,6 +643,12 @@ namespace AlgeTimyUsb.SampleApplication
                 string runningMessage = $"{{\"event\":\"running\",\"value\":true}}";
                 Task.Run(() => BroadcastToWebSocketClientsAsync(runningMessage));
             }
+        }
+
+        // Clear log button click event handler
+        private void btnClearLog_Click(object sender, EventArgs e)
+        {
+            listBox1.Items.Clear();
         }
 
 

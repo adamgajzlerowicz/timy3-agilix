@@ -36,9 +36,9 @@
             this.btnStop = new System.Windows.Forms.Button();
             this.button4 = new System.Windows.Forms.Button();
             this.txtBytes = new System.Windows.Forms.TextBox();
-            this.chkHeartbeat = new System.Windows.Forms.CheckBox();
             this.chkRaw = new System.Windows.Forms.CheckBox();
             this.chkBytes = new System.Windows.Forms.CheckBox();
+            this.btnClearLog = new System.Windows.Forms.Button();
             this.groupBox1 = new System.Windows.Forms.GroupBox();
             this.groupBox2 = new System.Windows.Forms.GroupBox();
             this.label1 = new System.Windows.Forms.Label();
@@ -114,16 +114,6 @@
             this.txtBytes.Text = "50,52,4F,47,3F,D";
             this.txtBytes.KeyUp += new System.Windows.Forms.KeyEventHandler(this.txtBytes_KeyUp);
             // 
-            // chkHeartbeat
-            // 
-            this.chkHeartbeat.AutoSize = true;
-            this.chkHeartbeat.Location = new System.Drawing.Point(168, 23);
-            this.chkHeartbeat.Name = "chkHeartbeat";
-            this.chkHeartbeat.Size = new System.Drawing.Size(73, 17);
-            this.chkHeartbeat.TabIndex = 7;
-            this.chkHeartbeat.Text = "Heartbeat";
-            this.chkHeartbeat.UseVisualStyleBackColor = true;
-            // 
             // chkRaw
             // 
             this.chkRaw.AutoSize = true;
@@ -144,6 +134,16 @@
             this.chkBytes.Text = "Bytes";
             this.chkBytes.UseVisualStyleBackColor = true;
             // 
+            // btnClearLog
+            // 
+            this.btnClearLog.Location = new System.Drawing.Point(168, 19);
+            this.btnClearLog.Name = "btnClearLog";
+            this.btnClearLog.Size = new System.Drawing.Size(75, 23);
+            this.btnClearLog.TabIndex = 10;
+            this.btnClearLog.Text = "Clear Log";
+            this.btnClearLog.UseVisualStyleBackColor = true;
+            this.btnClearLog.Click += new System.EventHandler(this.btnClearLog_Click);
+            // 
             // groupBox1
             // 
             this.groupBox1.Controls.Add(this.btnStart);
@@ -151,7 +151,7 @@
             this.groupBox1.Controls.Add(this.listBox1);
             this.groupBox1.Controls.Add(this.chkRaw);
             this.groupBox1.Controls.Add(this.btnStop);
-            this.groupBox1.Controls.Add(this.chkHeartbeat);
+            this.groupBox1.Controls.Add(this.btnClearLog);
             this.groupBox1.Location = new System.Drawing.Point(12, 99);
             this.groupBox1.Name = "groupBox1";
             this.groupBox1.Size = new System.Drawing.Size(403, 253);
@@ -212,9 +212,9 @@
         private System.Windows.Forms.Button btnStop;
         private System.Windows.Forms.Button button4;
         private System.Windows.Forms.TextBox txtBytes;
-        private System.Windows.Forms.CheckBox chkHeartbeat;
         private System.Windows.Forms.CheckBox chkRaw;
         private System.Windows.Forms.CheckBox chkBytes;
+        private System.Windows.Forms.Button btnClearLog;
         private System.Windows.Forms.GroupBox groupBox1;
         private System.Windows.Forms.GroupBox groupBox2;
         private System.Windows.Forms.Label label1;
