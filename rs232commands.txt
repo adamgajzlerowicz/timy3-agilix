@@ -1,0 +1,119 @@
+3.1 RS 232 Interface
+3.1.1 Interface Data
+RS 232 Interface
+38.400 Baud (not adjustable!!!)
+8 Data Bit, no Parity Bit, 1 Stop Bit
+ASCII Characters
+Output of running time in 1/10 second interval, between output of timing impulses.
+B####bCxxbHH:MM:SS:zhtq(CR) Impulse Time
+HH:MM:SS.z(CR) Running Time
+B....................... blank
+#### ................. continuous ID number or BIB
+Cxx ................... channel (see below, if only 2 characters the third is a blank)
+HH .................... hours
+: ........................ separation
+MM ................... minutes
+SS..................... seconds
+z........................ 1/10 seconds
+h ....................... 1/100 seconds
+t ........................ 1/1.000 seconds
+q ....................... 1/10.000 seconds
+(CR).................. Carriage Return
+Channels:
+Channel 0 C0 Precision 1/10.000
+Channel 0M C0M Precision 1/100 – manual = keyboard
+Channel 1 C1 Precision 1/10.000
+Channel 1M C1M Precision 1/100 – manual = keyboard
+Channel 2 C2 Precision 1/10.000
+Channel 3 C3 Precision 1/10.000
+Channel 4 C4 Precision 1/10.000
+Channel 5 C5 Precision 1/100
+Channel 6 C6 Precision 1/100
+Channel 7 C7 Precision 1/100
+Channel 8 C8 Precision 1/100
+Timy PC-Timer
+Page 6
+3.1.2 Protocol of RS 232-Interface:
+07:50:40.0 Running time in hours, min, sec, and 1/10 sec
+07:50:40.1 Running time in hours, min, sec, and 1/10 sec
+07:50:40.2 Running time in hours, min, sec, and 1/10 sec
+ 0033 C0 07:50:40.2828 00 Impulse 33 from channel 0
+07:50:40.3 Running time in hours, min, sec, and 1/10 sec
+07:50:40.4 Running time in hours, min, sec, and 1/10 sec
+07:50:40.5 Running time in hours, min, sec, and 1/10 sec
+ 0034 C1 07:50:40.5015 00 Impulse 34 from channel 1
+07:50:40.6 Running time in hours, min, sec, and 1/10 sec
+07:50:40.7 Running time in hours, min, sec, and 1/10 sec
+ 0035 C3 07:50:40.7863 00 Impulse 35 from channel 3
+07:50:40.8 Running time in hours, min, sec, and 1/10 sec
+07:50:40.9 Running time in hours, min, sec, and 1/10 sec
+07:50:41.0 Running time in hours, min, sec, and 1/10 sec
+07:50:41.1 Running time in hours, min, sec, and 1/10 sec
+07:50:41.2 Running time in hours, min, sec, and 1/10 sec
+07:50:41.3 Running time in hours, min, sec, and 1/10 sec
+07:50:41.4 Running time in hours, min, sec, and 1/10 sec
+07:50:41.5 Running time in hours, min, sec, and 1/10 sec
+ 0036 C5 07:50:41.5175 00 Impulse 36 from channel 5
+07:50:41.6 Running time in hours, min, sec, and 1/10 sec
+ 0037 C4 07:50:41.6536 00 Impulse 37 from channel 4
+07:50:41.7 Running time in hours, min, sec, and 1/10 sec
+07:50:41.8 Running time in hours, min, sec, and 1/10 sec
+ 0038 C6 07:50:41.83 00 Impulse 38 from channel 1
+07:50:41.9 Running time in hours, min, sec, and 1/10 sec
+ 0039 C7 07:50:41.94 00 Impulse 39 from channel 1
+07:50:42.0 Running time in hours, min, sec, and 1/10 sec
+07:50:42.1 Running time in hours, min, sec, and 1/10 sec
+ 0040 C8 07:50:42.17 00 Impulse 40 from channel 1
+07:50:42.2 Running time in hours, min, sec, and 1/10 sec
+07:50:42.3 Running time in hours, min, sec, and 1/10 sec
+ 0041 C0M 07:50:42.40 00 Impulse, 41 Channel 0, manual
+07:50:42.4 Running time in hours, min, sec, and 1/10 sec
+ 0042 C1M 07:50:42.46 00 Impulse 42, Channel 1, manual
+07:50:42.5 Running time in hours, min, sec, and 1/10 sec
+ 0043 C0M 07:50:42.57 00 Impulse 43, Channel 0, manual
+07:50:42.6 Running time in hours, min, sec, and 1/10 sec
+ 0044 C1M 07:50:42.66 00 Impulse 44, Channel 1, manual
+07:50:42.7 Running time in hours, min, sec, and 1/10 sec
+ 0045 C0M 07:50:42.75 00 Impulse 45, Channel 0, manual
+ 0046 C1 07:50:42.7661 00 Impulse 46 from channel 1
+07:50:42.8 Running time in hours, min, sec, and 1/10 sec
+ 0047 C1M 07:50:42.84 00 Impulse 47, Channel 1, manual
+07:50:42.9 Running time in hours, min, sec, and 1/10 sec
+ 0048 C1 07:50:42.9058 00 Impulse 48 from channel 1
+ 0049 C0M 07:50:42.94 00 Impulse 49 from channel 1
+Timy PC-Timer
+ Page 7
+07:50:43.0 Running time in hours, min, sec, and 1/10 sec
+ 0050 C1M 07:50:43.03 00 Impulse 50, Channel 1, manual
+ 0051 C1 07:50:43.0321 00 Impulse 51 from channel 1
+ 0052 C0M 07:50:43.10 00 Impulse 52, Channel 0, manual
+07:50:43.1 Running time in hours, min, sec, and 1/10 sec
+07:50:43.2 Running time in hours, min, sec, and 1/10 sec
+07:50:43.3 Running time in hours, min, sec, and 1/10 sec
+07:50:43.4 Running time in hours, min, sec, and 1/10 sec
+07:50:43.5 Running time in hours, min, sec, and 1/10 sec
+07:50:43.6 Running time in hours, min, sec, and 1/10 sec
+07:50:43.7 Running time in hours, min, sec, and 1/10 sec
+07:50:43.8 Running time in hours, min, sec, and 1/10 sec
+07:50:43.9 Running time in hours, min, sec, and 1/10 sec
+07:50:44.0 Running time in hours, min, sec, and 1/10 sec
+07:50:44.1 Running time in hours, min, sec, and 1/10 sec
+3.1.3 RS 232 Commands
+Syntax Parameter Example Explanation Description
+BE 0 or 1 BE0 BE1BE? Beep tone Request, on/off
+BWF BWF Update of program - RS 232 Afterwards update-file
+USB-TIMY:BWF!!!! USB-TIMY:BWF!!!! Update of program - USB Afterwards update-file
+DIT1 00 - 99 DIT103 DIT1? Display time 1 in display Request, Set
+DIT2 00 - 99 DIT299 DIT2? Display time 2 in display Request, Set
+DTF 00.01 - 59.99 DTF00.03 DTF? Delay time for finish and intermediate Request, Set
+DTS 00.01 - 59.99 DTS09.99 DTS? Delay time for start Request, Set
+KL 0 or 1 KL0 KL1 KL? Keyboard lock Request, on/off
+NSF? NSF? Timy version of program Sends NSFV03B2
+PRI_AF 0 - 9 PRI_AF3 Line Feed adjustment for printer Printer AutoLineFeed 0 - 9
+PRI 0 or 1 PRI0 PRI1 On, or. off from printer Request, on/off
+PRILF PRILF Line Feed for printer Set
+PRILO PRILO Print of ALGE-logo Set
+PRIM PRIM Printing of memory Printing memory
+RSM RSM Send memory through RS 232 Memory on RS 232
+SL 0 or 1 SL0 SL1 SL? Print of ALGE logo (switch on) Request, on/off
+TIMYINIT TIMYINIT Output of Timy hardware number Not specified
