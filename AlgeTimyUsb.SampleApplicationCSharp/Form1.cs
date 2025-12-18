@@ -207,22 +207,9 @@ namespace AlgeTimyUsb.SampleApplication
         {
             try
             {
-                // Log the raw input to see exactly what we receive
-                AddLog($"RAW INPUT: [{data}]");
-
                 string cleanData = data.Replace(",", " ").Trim();
                 while (cleanData.Contains("  "))
                     cleanData = cleanData.Replace("  ", " ");
-
-                AddLog($"CLEANED: [{cleanData}]");
-
-                // Log each part separately to understand the format
-                string[] parts = cleanData.Split(' ');
-                AddLog($"PARTS COUNT: {parts.Length}");
-                for (int i = 0; i < parts.Length; i++)
-                {
-                    AddLog($"  Part[{i}]: [{parts[i]}]");
-                }
 
                 // Check for start signal (c0)
                 if (cleanData.ToLower().Contains(" c0 "))
@@ -232,8 +219,6 @@ namespace AlgeTimyUsb.SampleApplication
                     startTime = DateTime.Now;
                     isRunning = true;
                     string timeString = startTime.Value.ToString("HH:mm:ss.fff");
-
-                    AddLog($"START TIME FORMATTED: [{timeString}]");
 
                     Task.Run(async () =>
                     {
@@ -247,15 +232,11 @@ namespace AlgeTimyUsb.SampleApplication
                     AddLog("FINISH SIGNAL");
 
                     // Find time value in format HH:mm:ss.fff or HH:mm:ss:hh
-                    string[] finishParts = cleanData.Split(' ');
-                    string timeValue = finishParts.FirstOrDefault(p => p.Contains(":") && (p.Contains(".") || p.Count(c => c == ':') >= 3));
-
-                    AddLog($"TIME VALUE FOUND: [{timeValue ?? "NULL"}]");
+                    string[] parts = cleanData.Split(' ');
+                    string timeValue = parts.FirstOrDefault(p => p.Contains(":") && (p.Contains(".") || p.Count(c => c == ':') >= 3));
 
                     if (!string.IsNullOrEmpty(timeValue))
                     {
-                        AddLog($"FINISH TIME TO SEND: [{timeValue}]");
-
                         Task.Run(async () =>
                         {
                             await BroadcastToClients($"{{\"event\":\"finish\",\"time\":\"{timeValue}\"}}");
