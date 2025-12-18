@@ -39,12 +39,12 @@ namespace AlgeTimyUsb.SampleApplication
             this.listBox1.ItemHeight = 14;
             this.listBox1.Location = new System.Drawing.Point(12, 12);
             this.listBox1.Name = "listBox1";
-            this.listBox1.Size = new System.Drawing.Size(560, 298);
+            this.listBox1.Size = new System.Drawing.Size(1120, 298);
             this.listBox1.TabIndex = 0;
             //
             // btnClearLog
             //
-            this.btnClearLog.Location = new System.Drawing.Point(497, 316);
+            this.btnClearLog.Location = new System.Drawing.Point(1057, 316);
             this.btnClearLog.Name = "btnClearLog";
             this.btnClearLog.Size = new System.Drawing.Size(75, 23);
             this.btnClearLog.TabIndex = 1;
@@ -56,7 +56,7 @@ namespace AlgeTimyUsb.SampleApplication
             //
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
-            this.ClientSize = new System.Drawing.Size(584, 351);
+            this.ClientSize = new System.Drawing.Size(1168, 351);
             this.Controls.Add(this.btnClearLog);
             this.Controls.Add(this.listBox1);
             this.Name = "Form1";
