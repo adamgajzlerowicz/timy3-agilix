@@ -16,9 +16,6 @@ namespace AlgeTimyUsb.SampleApplication
         private HttpListener httpListener;
         private CancellationTokenSource webSocketCancellation;
         private readonly List<WebSocket> connectedClients = new List<WebSocket>();
-        private DateTime? startTime;
-        private string deviceStartTime;
-        private bool isRunning = false;
 
         public Form1()
         {
@@ -45,19 +42,6 @@ namespace AlgeTimyUsb.SampleApplication
                         timyUsb.DeviceDisconnected += (s, ev) => AddLog($"Device {ev.Device.Id} disconnected");
                         timyUsb.LineReceived += TimyUsb_LineReceived;
                         timyUsb.Start();
-
-                        // Send initial command after connection
-                        Task.Run(async () =>
-                        {
-                            await Task.Delay(1000);
-                            BeginInvoke(new Action(() =>
-                            {
-                                if (timyUsb.ConnectedDevicesCount > 0)
-                                {
-                                    timyUsb.Send("PROG\r");
-                                }
-                            }));
-                        });
                     }
                     catch (Exception ex)
                     {
@@ -95,13 +79,6 @@ namespace AlgeTimyUsb.SampleApplication
                             }
 
                             BeginInvoke(new Action(() => AddLog($"Client connected. Total: {connectedClients.Count}")));
-
-                            // Send current state
-                            if (isRunning && !string.IsNullOrEmpty(deviceStartTime))
-                            {
-                                await SendToClient(webSocket, $"{{\"event\":\"start\",\"time\":\"{deviceStartTime}\"}}");
-                                await SendToClient(webSocket, $"{{\"event\":\"running\",\"value\":true}}");
-                            }
 
                             _ = Task.Run(() => HandleClient(webSocket));
                         }
@@ -193,15 +170,7 @@ namespace AlgeTimyUsb.SampleApplication
         private void TimyUsb_LineReceived(object sender, Alge.DataReceivedEventArgs e)
         {
             AddLog($"Device {e.Device.Id}: {e.Data}");
-
-            if (e.Data.StartsWith("PROG: "))
-            {
-                AddLog($"Active program: {e.Data.Substring(6)}");
-            }
-            else
-            {
-                ProcessTimingData(e.Data);
-            }
+            ProcessTimingData(e.Data);
         }
 
         private void ProcessTimingData(string data)
@@ -212,38 +181,8 @@ namespace AlgeTimyUsb.SampleApplication
                 while (cleanData.Contains("  "))
                     cleanData = cleanData.Replace("  ", " ");
 
-                // Check for start signal (c0)
-                if (cleanData.ToLower().Contains(" c0 "))
-                {
-                    AddLog("START SIGNAL");
-
-                    // Extract device time after c0
-                    string[] parts = cleanData.Split(' ');
-                    string deviceTime = null;
-                    for (int i = 0; i < parts.Length - 1; i++)
-                    {
-                        if (parts[i].ToLower() == "c0")
-                        {
-                            deviceTime = parts[i + 1];
-                            break;
-                        }
-                    }
-
-                    if (!string.IsNullOrEmpty(deviceTime))
-                    {
-                        deviceStartTime = deviceTime;
-                        startTime = DateTime.Now;
-                        isRunning = true;
-
-                        Task.Run(async () =>
-                        {
-                            await BroadcastToClients($"{{\"event\":\"start\",\"time\":\"{deviceStartTime}\"}}");
-                            await BroadcastToClients($"{{\"event\":\"running\",\"value\":true}}");
-                        });
-                    }
-                }
-                // Check for finish signal (c1)
-                else if (cleanData.ToLower().Contains(" c1 ") || cleanData.ToLower().Contains("c1"))
+                // Check for finish signal (c1) only
+                if (cleanData.ToLower().Contains(" c1 ") || cleanData.ToLower().Contains("c1"))
                 {
                     AddLog("FINISH SIGNAL");
 
@@ -256,12 +195,7 @@ namespace AlgeTimyUsb.SampleApplication
                         Task.Run(async () =>
                         {
                             await BroadcastToClients($"{{\"event\":\"finish\",\"time\":\"{timeValue}\"}}");
-                            await BroadcastToClients($"{{\"event\":\"running\",\"value\":false}}");
                         });
-
-                        startTime = null;
-                        deviceStartTime = null;
-                        isRunning = false;
                     }
                 }
             }
