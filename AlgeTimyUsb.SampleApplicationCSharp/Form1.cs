@@ -17,6 +17,7 @@ namespace AlgeTimyUsb.SampleApplication
         private CancellationTokenSource webSocketCancellation;
         private readonly List<WebSocket> connectedClients = new List<WebSocket>();
         private DateTime? startTime;
+        private string deviceStartTime;
         private bool isRunning = false;
 
         public Form1()
@@ -96,9 +97,9 @@ namespace AlgeTimyUsb.SampleApplication
                             BeginInvoke(new Action(() => AddLog($"Client connected. Total: {connectedClients.Count}")));
 
                             // Send current state
-                            if (isRunning && startTime.HasValue)
+                            if (isRunning && !string.IsNullOrEmpty(deviceStartTime))
                             {
-                                await SendToClient(webSocket, $"{{\"event\":\"start\",\"time\":\"{startTime.Value:HH:mm:ss.fff}\"}}");
+                                await SendToClient(webSocket, $"{{\"event\":\"start\",\"time\":\"{deviceStartTime}\"}}");
                                 await SendToClient(webSocket, $"{{\"event\":\"running\",\"value\":true}}");
                             }
 
@@ -216,15 +217,30 @@ namespace AlgeTimyUsb.SampleApplication
                 {
                     AddLog("START SIGNAL");
 
-                    startTime = DateTime.Now;
-                    isRunning = true;
-                    string timeString = startTime.Value.ToString("HH:mm:ss.fff");
-
-                    Task.Run(async () =>
+                    // Extract device time after c0
+                    string[] parts = cleanData.Split(' ');
+                    string deviceTime = null;
+                    for (int i = 0; i < parts.Length - 1; i++)
                     {
-                        await BroadcastToClients($"{{\"event\":\"start\",\"time\":\"{timeString}\"}}");
-                        await BroadcastToClients($"{{\"event\":\"running\",\"value\":true}}");
-                    });
+                        if (parts[i].ToLower() == "c0")
+                        {
+                            deviceTime = parts[i + 1];
+                            break;
+                        }
+                    }
+
+                    if (!string.IsNullOrEmpty(deviceTime))
+                    {
+                        deviceStartTime = deviceTime;
+                        startTime = DateTime.Now;
+                        isRunning = true;
+
+                        Task.Run(async () =>
+                        {
+                            await BroadcastToClients($"{{\"event\":\"start\",\"time\":\"{deviceStartTime}\"}}");
+                            await BroadcastToClients($"{{\"event\":\"running\",\"value\":true}}");
+                        });
+                    }
                 }
                 // Check for finish signal (c1)
                 else if (cleanData.ToLower().Contains(" c1 ") || cleanData.ToLower().Contains("c1"))
@@ -244,6 +260,7 @@ namespace AlgeTimyUsb.SampleApplication
                         });
 
                         startTime = null;
+                        deviceStartTime = null;
                         isRunning = false;
                     }
                 }
